@@ -173,18 +173,19 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     // TODO
 
 
+    unsigned long long int current_sequenceNumber = 0;
     int byteReceived = 0;
     int byteSent = 0;
     unsigned long long int received_ack_number;
     struct sockaddr_in addr;
     socklen_t addr_size = sizeof(addr);
-    memset(sockaddr_in, 0, sizeof(sockaddr_in));
+    memset(&addr, 0, sizeof(sockaddr_in));
 
-    first_recv = 1;
+    int first_recv = 1;
     while(1){
       //TODO: if we should recv any udp pakcet, if recvfrom needs length spec
       if(first_recv ==1 ){
-      byteReceived = recefrom(s, ack_msg_buf, sizeof(ack_msg_buf), 0, (sockaddr *)&addr, &addr_size);
+      byteReceived = recvfrom(s, ack_msg_buf, sizeof(ack_msg_buf), 0, (sockaddr *)&addr, &addr_size);
       if(byteReceived != sizeof(ack_msg_buf)){
         perror("incorrect data format, size of ack data should be 8 bytes");
         exit(1);
@@ -192,7 +193,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
       first_recv = 0;
       memcpy(&received_ack_number, ack_msg_buf, sizeof(unsigned long long int));
       cout << "firest_recv_ack: "<< endl;
-      printBits(8, received_ack_number);
+      printBits(8, &received_ack_number);
     }
 
     // when ack is larger than current
