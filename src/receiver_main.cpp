@@ -72,10 +72,10 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         int contentI;
 
         //1.get seq num
-        memcpy(&currSeqNum, buf, 4);
+        memcpy(&currSeqNum, buf, 8);
 
         //2.get content
-        memcpy(&contentBuf, buf + 8, sizeof(buf) - 8);
+        memcpy(&contentBuf, buf + 12, sizeof(buf) - 12);
         string contentStr = contentBuf; //c++
 
         //a packet that arrives too early, buffer it, and send the dup ack
@@ -109,10 +109,11 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             orgPlanSeq = nextPktIdx;
         }
 
-        char ackChars[40];
-        sprintf(ackChars, "%lld", lastAckedNum);
-        string ackCharsTmp = ackChars;
-        sendto(s, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
+        char ackChars[8];
+        memcpy(ackChars, &lastAckedNum, 8);
+        // sprintf(ackChars, "%lld", lastAckedNum);
+        // string ackCharsTmp = ackChars;
+        sendto(s, (void*)ackChars, sizeof(long long int), 0, (struct sockaddr *)&their_addr, their_addr_size);
         // if (numbytes < 0) {
         //     diep("send ack error");
         // }
