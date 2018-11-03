@@ -96,10 +96,11 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             //under this condition: send back dup ack
             char ackChars[40];
             sprintf(ackChars, "%d", orgPlanSeq - 1);
-            numbytes = sendto(socket, (void*)ackChars, sizeof(ackChars), 0, their_addr, their_addr_size);
-            if (numbytes < 0) {
-                diep("send ack error");
-            }
+            string ackCharsTmp = ackChars;
+            sendto(socket, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
+            // if (numbytes < 0) {
+            //     diep("send ack error");
+            // }
         }
         //a packet which is expected, deliver it, and go forward to deliver any buffered packets right behind it as well
         else if (currSeqNum == orgPlanSeq) {
@@ -122,10 +123,11 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
         char ackChars[40];
         sprintf(ackChars, "%d", lastAckedNum);
-        numbytes = sendto(socket, (void*)ackChars, sizeof(ackChars), 0, their_addr, their_addr_size);
-        if (numbytes < 0) {
-            diep("send ack error");
-        }
+        string ackCharsTmp = ackChars;
+        sendto(socket, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
+        // if (numbytes < 0) {
+        //     diep("send ack error");
+        // }
     }
 
 
