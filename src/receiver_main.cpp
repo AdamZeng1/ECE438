@@ -57,10 +57,11 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
     struct sockaddr_in their_addr; //sender's address, get filled from recvfrom function(how does this work?)
     int numbytes = 0;
+    int their_addr_size = sizeof(their_addr);
     //ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,struct sockaddr *src_addr, socklen_t *addrlen);
     while (1) {
-        if (numbtyes = recvfrom(s, buf, sizeof(buf_size), (struct sockaddr *)their_addr, sizeof(their_addr)) < 0 ) {
-            diep("Error: fail to receive!");
+        if (numbytes = recvfrom(s, buf, sizeof(buf), (struct sockaddr *)&their_addr, &their_addr_size) < 0 ) {
+            diep("Finished: receive ends!");
         }
 
         char seqBuf[32];
@@ -89,7 +90,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         string contentStr = contentBuf; //c++
 
         //a packet that arrives too early, buffer it
-        if (currSeqNum > orgPlanSeq && (receivedBufferedMap.find(currSeqNum) == currSeqNum.end() || receivedBufferedMap[currSeqNum] == "")) {
+        if (currSeqNum > orgPlanSeq && (receivedBufferedMap.find(currSeqNum) == receivedBufferedMap.end() || receivedBufferedMap[currSeqNum] == "")) {
             receivedBufferedMap[currSeqNum] = contentStr;
         }
         //a packet which is expected, deliver it, and go forward to deliver any buffered packets right behind it as well
