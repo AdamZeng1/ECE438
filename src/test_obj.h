@@ -13,7 +13,7 @@ class Packet
     //time
     // int length;
   public:
-    long sequenceNumber;
+    uint32_t sequenceNumber;
     char * data;
     int receiveWindow;
     long int sentTime;
@@ -24,10 +24,10 @@ class Packet
     // long getSequenceNumber();
 
     Packet();
-    Packet(long seq, long int t, int length, char dat[]);
+    Packet(uint32_t seq, long int t, int length, char dat[]);
 
     void setReceiveWindow(int rec);
-    void setSequenceNumber(long seq);
+    void setSequenceNumber(uint32_t seq);
     void setData(char dat[]);
     void setSentTime(long int t);
 

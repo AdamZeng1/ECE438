@@ -31,35 +31,16 @@
 
 // c++ library and Packet class
 #include"test_obj.h"
-/*
-class Packet
-{
-  private:
-    char * data;
-    int receiveWindow;
-    int length;
-  public:
-    long sequenceNumber;
-    int getReceiveWindow();
-    char * getData();
-    int getLength();
-    long getSequenceNumber();
-    Packet();
-    Packet(long seq, int rec, char dat[]);
-    void setReceiveWindow(int rec);
-    void setSequenceNumber(long seq);
-    void setData(char dat[]);
-};
-*/
 #include<iostream>
-
 using namespace std;
 
 
 int s, slen; // slen: the length of sockaddr_in, s:socket
 struct sockaddr_in si_other;
 
+
 int cwnd_start, cwnd_end; // set to be INIT_CWND_START
+//
 int ss_threshold, cwnd_size; // set to be INIT_SST, 1
 bool wait_flag; // set to be false when init
 bool timeout_flag; // set to be false when init
@@ -67,9 +48,9 @@ bool transmission_finished_flag; // set to be false when int
 
 Packet * packet_window[PACKET_BUFFER_SIZE];
 
-int transmit_round; // set to be 1 when init, plus one if circlely using the packet_window
-int expected_round;
-long packet_total_numbers; // total number of packets = total_bytes / 1464
+int current_current_transmit_round; // set to be 1 when init, plus one if circlely using the packet_window
+int total_round;
+int packet_total_numbers; // total number of packets = total_bytes / 1464
 int last_packet_size;
 long int current_time;
 time_t timer;
@@ -77,6 +58,24 @@ time_t timer;
 void diep(char *s) {
     perror(s);
     exit(1);
+}
+
+void printBits(size_t const size, void const * const ptr)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+
+    // for (i=size-1;i>=0;i--)
+    for (i = 0; i < size; i++)
+    {
+        for (j=7;j>=0;j--)
+        {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+    }
+    puts("");
 }
 
 void init(int numberBytes){
@@ -90,7 +89,7 @@ void init(int numberBytes){
   transmission_finished_flag = false;
 
   // packet_window = {};
-  transmit_round = 1;
+  current_transmit_round = 1;
 
   last_packet_size = numberBytes % BLOCK_SIZE_FOR_DATA;
   if(last_packet_size == 0){
@@ -101,66 +100,38 @@ void init(int numberBytes){
 
   int rd = packet_total_numbers % PACKET_BUFFER_SIZE;
   if(rd == 0){
-    expected_round = packet_total_numbers / PACKET_BUFFER_SIZE;
+    total_round = packet_total_numbers / PACKET_BUFFER_SIZE;
   }else{
-    expected_round = packet_total_numbers / PACKET_BUFFER_SIZE + 1;
+    total_round = packet_total_numbers / PACKET_BUFFER_SIZE + 1;
   }
 
 }
 
-// prepare file data into Packets
-//
-Packet* prepareData(FILE * fp, long sequenceNumber){
-  int length;
-  if(packet_total_numbers -1 == sequenceNumber){
-    if(last_packet_size == 0){
-      length = BLOCK_SIZE_FOR_DATA;}
-    else{
-      length = last_packet_size;}
-  }else{
-    length = BLOCK_SIZE_FOR_DATA;
+/* prepare file data into Packets, append timestamp info */
+Packet* prepareData(FILE * fp, int sequenceNumber){
+  int data_length = BLOCK_SIZE_FOR_DATA; // length for packet data: [0,1472 - 8]
+  if(packet_total_numbers -1 == sequenceNumber && last_packet_size != 0){
+      data_length = last_packet_size;
   }
 
-  char data[BLOCK_SIZE_FOR_DATA] = {};
-  // char* data;
-  // data = (char *)malloc(length);
+  //gabage init value
+  char * data = new char[data_length];
+  memset(data, 0, data_length);
 
   time(&timer);
   long int timestamp = timer;
 
-  fread(data, sizeof(char), length, fp);
-  Packet * new_packet;
-  if(length < BLOCK_SIZE_FOR_DATA){
-    new_packet = new Packet(sequenceNumber, timestamp,BLOCK_SIZE_FOR_DATA, data);
-  }else{
-    new_packet = new Packet(sequenceNumber, timestamp, length, data);
+  int byteRead = fread(data, sizeof(char), data_length, fp);
+  if(byteRead < data_length){
+    diep("read failure, expected for more byte. Check if your byte to transfer matches your file size. ");
+    exit(1);
   }
 
+  Packet * new_packet = new Packet(sequenceNumber, timestamp, data_length, data);
   return new_packet;
 }
 
-void printBits(size_t const size, void const * const ptr)
-{
-    unsigned char *b = (unsigned char*) ptr;
-    unsigned char byte;
-    int i, j;
-
-    for (i=size-1;i>=0;i--)
-    {
-        for (j=7;j>=0;j--)
-        {
-            byte = (b[i] >> j) & 1;
-            printf("%u", byte);
-        }
-    }
-    puts("");
-}
-
 void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {
-    // char* hostname
-    // unsigned short int hostUDPport
-    // char* filename
-    //unsigned long long int bytesToTransfer
 
     //Open the file
     FILE *fp;
@@ -176,51 +147,106 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
 
+    // struct sockaddr_in si_other;
     memset((char *) &si_other, 0, sizeof (si_other));
     si_other.sin_family = AF_INET;
     si_other.sin_port = htons(hostUDPport);
+    /* decimal ip addr to network bigendian addr*/
     if (inet_aton(hostname, &si_other.sin_addr) == 0) {
         fprintf(stderr, "inet_aton() failed\n");
         exit(1);
     }
 
+    // /* bind socket to receive from certain port */
+    // int bindRet = bind(s, (sockaddr*)&si_other, sizeof(si_other));
+    // TRACE("bindret = %d \r\n", bindRet);
+    // TRACE("errcode = %d \r\n", WSAGetLastError());
+
+
 	/* Send data and receive acknowledgements on s*/
     init(bytesToTransfer);
 
-    long current_sequenceNumber = 0;
-    char current_msg[BLOCK_SIZE_FOR_DATA];
-    // threading for acknowledgements
-    // threading for timeout monitor
+    /* state of transmit PKT and receive ACK*/
+    uint32_t expected_ack_number = 0;
+    uint32_t current_packet_sequenceNumber = 0;
+    int dupAckCount = 0;
+    bool isSlowStart = true;
+    bool isSST = false;
+    bool isFastRecovery = false;
 
-    // while(!transmission_finished_flag){
-      // while(wait_flag){
-      //   sleep();
-      // }
-      Packet * current_packet = prepareData(fp, current_sequenceNumber);
-      memcpy(current_msg, &(current_packet->sequenceNumber), sizeof(long));
-      memcpy(current_msg + 4, &(current_packet->data), current_packet->length);
-      cout << "this is a test for sending out the first packet: " <<  current_packet->sequenceNumber << "  this is for packet data: " << current_packet->data << endl;
-      // cout << "\n" << endl;
-      // char * tmp = current_msg + 4;
-      // printBits(5, tmp);
-      for(int i =0; i < 10; i++){
-        cout << "this is " << i << "th char in data: " << current_msg[4+i] << endl;
+    /* sending buffer and receiving buffer */
+    char current_msg[BLOCK_SIZE_FOR_DATA]; // gabage initial value
+    memset(current_msg, 0, BLOCK_SIZE_FOR_DATA);
+    char ack_msg_buf[8];
+    memset(ack_msg_buf, 0, 8);
+
+    /* threading TBD */
+    // TODO
+
+
+    int byteReceived;
+    uint32_t received_ack_number;
+    struct sockaddr_in addr;
+    socklen_t addr_size = sizeof(addr);
+
+    while(!transmission_finished_flag){
+
+      while(wait_flag){
+        //TODO: if we should recv any udp pakcet, if recvfrom needs length spec
+        byteReceived = recefrom(s, ack_msg_buf, sizeof(ack_msg_buf), 0, (sockaddr *)&addr, &addr_size);
+        if(byteReceived != 8){
+          perror("incorrect data format, size of ack data should be 8 bytes");
+          exit(1);
+        }
+        // when ack is larger than current
+        memcpy(&received_ack_number, ack_msg_buf, sizeof(int));
+        if(received_ack_number >= expected_ack_number){
+          uint32_t ack_diff = received_ack_number - expected_ack_number + 1;
+          if(isFastRecovery){}
+          if(isSST){}
+          if(isSlowStart){
+            // cwsize, cwstart, cwend update
+            // current_transmit_round
+            if()
+            cwnd_size = cwnd_size + ack_diff;
+            cwnd_start = received_ack_number % PACKET_BUFFER_SIZE;
+            cwnd_end = (cwnd_start + cwnd_size ) % PACKET_BUFFER_SIZE;
+          }else{
+
+          }
+        }else{
+          continue;
+        }
+        wait_flag = false;
       }
 
-      char temp[10];
-      memcpy(temp, current_msg + 4, 6);
-      string str = temp;
-      cout << str << endl;
 
-      // sendto(s, current_msg, current_packet->length, 0, (struct sockaddr*)&si_other, slen);
-    // }
+      Packet * current_packet = prepareData(fp, current_sequenceNumber);
+      memcpy(current_msg, &(current_packet->sequenceNumber), sizeof(int));
+      memcpy(current_msg + 8, current_packet->data, current_packet->length);
+
+      /* test for packet obj*/
+      // cout << "this is a test for sending out the first packet: " <<  current_packet->sequenceNumber << "  this is for packet data: " << current_packet->data << endl;
+      // cout << "length: " << current_packet->length << endl;
+      // cout << "timestamp: " << current_packet->sentTime << endl;
+
+      // /* test for var */
+      // cout << "current_transmit_round:" << current_transmit_round << endl; // set to be 1 when init, plus one if circlely using the packet_window
+      // cout << " total_round:" << total_round << endl;
+      // cout << " packet_total_numbers:" << packet_total_numbers << endl; // total number of packets = total_bytes / 1464
+      // cout << " last_packet_size:" << last_packet_size << endl;
+      sendto(s, current_msg, current_packet->length, 0, (sockaddr*)&si_other, slen);
+      current_sequenceNumber++;
+      if(current_sequenceNumber > )
+
+      wait_flag = true;
+    }
 
     printf("Closing the socket\n");
     close(s);
     return;
 
 }
-
 
 
 /*
