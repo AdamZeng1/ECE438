@@ -83,9 +83,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             receivedBufferedMap[currSeqNum] = contentStr;
             //under this condition: send back dup ack
             char ackChars[40];
-            sprintf(ackChars, "%d", orgPlanSeq - 1);
+            sprintf(ackChars, "%lld", orgPlanSeq - 1);
             string ackCharsTmp = ackChars;
-            sendto(socket, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
+            sendto(s, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
             // if (numbytes < 0) {
             //     diep("send ack error");
             // }
@@ -110,9 +110,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         }
 
         char ackChars[40];
-        sprintf(ackChars, "%d", lastAckedNum);
+        sprintf(ackChars, "%lld", lastAckedNum);
         string ackCharsTmp = ackChars;
-        sendto(socket, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
+        sendto(s, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
         // if (numbytes < 0) {
         //     diep("send ack error");
         // }
