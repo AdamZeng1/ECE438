@@ -94,7 +94,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         if (currSeqNum > orgPlanSeq && (receivedBufferedMap.find(currSeqNum) == receivedBufferedMap.end() || receivedBufferedMap[currSeqNum] == "")) {
             receivedBufferedMap[currSeqNum] = contentStr;
             //under this condition: send back dup ack
-            numbytes = sendto(socket, (void*)(orgPlanSeq - 1), sizeof(long long int), 0, their_addr, their_addr_size);
+            char ackChars[40];
+            sprintf(ackChars, "%d", orgPlanSeq - 1);
+            numbytes = sendto(socket, (void*)ackChars, sizeof(ackChars), 0, their_addr, their_addr_size);
             if (numbytes < 0) {
                 diep("send ack error");
             }
@@ -118,7 +120,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             orgPlanSeq = nextPktIdx;
         }
 
-        numbytes = sendto(socket, (void*)lastAckedNum, sizeof(long long int), 0, their_addr, their_addr_size);
+        char ackChars[40];
+        sprintf(ackChars, "%d", lastAckedNum);
+        numbytes = sendto(socket, (void*)ackChars, sizeof(ackChars), 0, their_addr, their_addr_size);
         if (numbytes < 0) {
             diep("send ack error");
         }
