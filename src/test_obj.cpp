@@ -6,7 +6,7 @@ Packet::Packet(){
   this->sequenceNumber = 2;
 }
 
-Packet::Packet(uint32_t seq, long int t, int length, char dat[]){
+Packet::Packet(unsigned long long int seq, long int t, int length, char dat[]){
   this->sequenceNumber = seq;
   this->sentTime = t;
   this->data = dat;
@@ -33,7 +33,7 @@ void Packet::setReceiveWindow(int rec){
   this->receiveWindow = rec;
 }
 
-void Packet::setSequenceNumber(uint32_t seq){
+void Packet::setSequenceNumber(unsigned long long int seq){
   this->sequenceNumber = seq;
 }
 
