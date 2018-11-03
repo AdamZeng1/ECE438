@@ -61,7 +61,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     socklen_t their_addr_size = sizeof(their_addr);
     //ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,struct sockaddr *src_addr, socklen_t *addrlen);
     while (1) {
-        if (numbytes = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&their_addr, &their_addr_size) < 0 ) {
+        if ((numbytes = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&their_addr, &their_addr_size)) < 0 ) {
             diep("Finished: receive ends!");
         }
 
