@@ -90,9 +90,14 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         //contentBuf[contentI - seqI - 1] = '/0'; //right??
         string contentStr = contentBuf; //c++
 
-        //a packet that arrives too early, buffer it
+        //a packet that arrives too early, buffer it, and send the dup ack
         if (currSeqNum > orgPlanSeq && (receivedBufferedMap.find(currSeqNum) == receivedBufferedMap.end() || receivedBufferedMap[currSeqNum] == "")) {
             receivedBufferedMap[currSeqNum] = contentStr;
+            //under this condition: send back dup ack
+            numbytes = sendto(socket, (void*)(orgPlanSeq - 1), sizeof(long long int), 0, their_addr, their_addr_size);
+            if (numbytes < 0) {
+                diep("send ack error");
+            }
         }
         //a packet which is expected, deliver it, and go forward to deliver any buffered packets right behind it as well
         else if (currSeqNum == orgPlanSeq) {
@@ -104,12 +109,18 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             while (receivedBufferedMap.find(nextPktIdx) != receivedBufferedMap.end() && receivedBufferedMap[nextPktIdx].length() != 0) {
                 fwrite(receivedBufferedMap[nextPktIdx].c_str(), 1, receivedBufferedMap[nextPktIdx].length(), fp);
                 fflush(fp);
+
                 // writeToFileAndDeliver(receivedBufferedMap[nextPktIdx]);
                 receivedBufferedMap[nextPktIdx] = "";
                 nextPktIdx ++;
             }
             lastAckedNum = nextPktIdx - 1;
             orgPlanSeq = nextPktIdx;
+        }
+
+        numbytes = sendto(socket, (void*)lastAckedNum, sizeof(long long int), 0, their_addr, their_addr_size);
+        if (numbytes < 0) {
+            diep("send ack error");
         }
     }
 
