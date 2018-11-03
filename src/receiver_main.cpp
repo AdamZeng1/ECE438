@@ -68,26 +68,14 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         char seqBuf[32];
         long long int currSeqNum;
         char contentBuf[1600];
-        char* bufPtr = buf;
         int seqI;
         int contentI;
 
         //1.get seq num
-        for (seqI = 0; seqI < sizeof(buf); seqI++, bufPtr++) { //sizeof ?
-            if (*(bufPtr) == ',') {
-                //seqBuf[seqI + 1] = '/0';
-                break;
-            }
-            seqBuf[seqI] = *bufPtr;
-        }
-        sscanf(seqBuf, "%lld", &currSeqNum);   //string to int
+        memcpy(&currSeqNum, buf, 4);
 
         //2.get content
-        bufPtr++;
-        for (contentI = seqI + 1; contentI < sizeof(buf); contentI++, bufPtr++) {
-            contentBuf[contentI - seqI - 1] = *bufPtr;
-        }
-        //contentBuf[contentI - seqI - 1] = '/0'; //right??
+        memcpy(&contentBuf, buf + 8, sizeof(buf) - 8);
         string contentStr = contentBuf; //c++
 
         //a packet that arrives too early, buffer it, and send the dup ack
