@@ -18,6 +18,7 @@
 #include <string>
 #include <map>
 
+using namespace std;
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
@@ -57,10 +58,10 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
     struct sockaddr_in their_addr; //sender's address, get filled from recvfrom function(how does this work?)
     int numbytes = 0;
-    int their_addr_size = sizeof(their_addr);
+    socklen_t their_addr_size = sizeof(their_addr);
     //ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,struct sockaddr *src_addr, socklen_t *addrlen);
     while (1) {
-        if (numbytes = recvfrom(s, buf, sizeof(buf), (struct sockaddr *)&their_addr, &their_addr_size) < 0 ) {
+        if (numbytes = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&their_addr, &their_addr_size) < 0 ) {
             diep("Finished: receive ends!");
         }
 
@@ -101,7 +102,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             //release the buffered packets and write them all
             long long int nextPktIdx = currSeqNum + 1;
             while (receivedBufferedMap.find(nextPktIdx) != receivedBufferedMap.end() && receivedBufferedMap[nextPktIdx].length() != 0) {
-                fwrite(receivedBufferedMap[nextPktIdx], 1, strlen(receivedBufferedMap[nextPktIdx]), fp);
+                fwrite(receivedBufferedMap[nextPktIdx].c_str(), 1, receivedBufferedMap[nextPktIdx].length(), fp);
                 fflush(fp);
                 // writeToFileAndDeliver(receivedBufferedMap[nextPktIdx]);
                 receivedBufferedMap[nextPktIdx] = "";
