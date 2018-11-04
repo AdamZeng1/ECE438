@@ -24,14 +24,17 @@
 #define INIT_SST  20
 #define INIT_CWND_START  0
 #define INIT_CWND_SIZE  1
-#define BLOCK_SIZE_FOR_HEADER  8
+#define BLOCK_SIZE_FOR_HEADER  12
+
 //Byte 1472 - 8 MTU = 1500 udp_header + ipheader = 28; for 1 GB = 10e9B = 10e6 pkt;
 #define BLOCK_SIZE_FOR_DATA  1464
 #define PACKET_BUFFER_SIZE  1000
 
+
 // c++ library and Packet class
 #include"test_obj.h"
 #include<iostream>
+#include<stdint.h>
 using namespace std;
 
 
@@ -46,11 +49,11 @@ bool wait_flag; // set to be false when init
 bool timeout_flag; // set to be false when init
 bool transmission_finished_flag; // set to be false when int
 
-Packet * packet_window[PACKET_BUFFER_SIZE];
+(Packet * ) packet_window[PACKET_BUFFER_SIZE];
 
 int current_current_transmit_round; // set to be 1 when init, plus one if circlely using the packet_window
 int total_round;
-int packet_total_numbers; // total number of packets = total_bytes / 1464
+unsigned long long int packet_total_numbers; // total number of packets = total_bytes / 1464
 int last_packet_size;
 long int current_time;
 time_t timer;
@@ -78,7 +81,7 @@ void printBits(size_t const size, void const * const ptr)
     puts("");
 }
 
-void init(int numberBytes){
+void init(unsigned long long int numberBytes){
   cwnd_start = INIT_CWND_START;
   cwnd_size = INIT_CWND_SIZE;
   cwnd_end = cwnd_start + cwnd_size;
@@ -108,7 +111,7 @@ void init(int numberBytes){
 }
 
 /* prepare file data into Packets, append timestamp info */
-Packet* prepareData(FILE * fp, int sequenceNumber){
+Packet* prepareData(FILE * fp, unsigned long long int sequenceNumber){
   int data_length = BLOCK_SIZE_FOR_DATA; // length for packet data: [0,1472 - 8]
   if(packet_total_numbers -1 == sequenceNumber && last_packet_size != 0){
       data_length = last_packet_size;
@@ -141,6 +144,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         exit(1);
     }
 
+    //TODO: verify the file size with the target bytesToTransfer
+
 	/* Determine how many bytes to transfer */
     slen = sizeof (si_other);
 
@@ -167,63 +172,102 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     init(bytesToTransfer);
 
     /* state of transmit PKT and receive ACK*/
-    uint32_t expected_ack_number = 0;
-    uint32_t current_packet_sequenceNumber = 0;
+    unsigned long long int expected_ack_number = 0;
+    unsigned long long int current_packet_sequenceNumber = 0;
     int dupAckCount = 0;
     bool isSlowStart = true;
     bool isSST = false;
     bool isFastRecovery = false;
+    int countAfterThreshold = 0;
 
     /* sending buffer and receiving buffer */
     char current_msg[BLOCK_SIZE_FOR_DATA]; // gabage initial value
     memset(current_msg, 0, BLOCK_SIZE_FOR_DATA);
-    char ack_msg_buf[8];
-    memset(ack_msg_buf, 0, 8);
+    char ack_msg_buf[BLOCK_SIZE_FOR_HEADER];
+    memset(ack_msg_buf, 0, BLOCK_SIZE_FOR_HEADER);
+    bool ack_buf[PACKET_BUFFER_SIZE];
+
 
     /* threading TBD */
     // TODO
 
 
-    int byteReceived;
-    uint32_t received_ack_number;
+    int byteReceived = 0;
+    unsigned long long int received_ack_number;
+    unsigned int receiver_window;
     struct sockaddr_in addr;
     socklen_t addr_size = sizeof(addr);
 
     while(!transmission_finished_flag){
 
       while(wait_flag){
-        //TODO: if we should recv any udp pakcet, if recvfrom needs length spec
-        byteReceived = recefrom(s, ack_msg_buf, sizeof(ack_msg_buf), 0, (sockaddr *)&addr, &addr_size);
-        if(byteReceived != 8){
-          perror("incorrect data format, size of ack data should be 8 bytes");
+        //TODO:
+        // if we should recv any udp pakcet, if recvfrom needs length spec
+        byteReceived = recvfrom(s, ack_msg_buf, sizeof(ack_msg_buf), 0, (sockaddr *)&addr, &addr_size);
+        if(byteReceived != sizeof(ack_msg_buf)){
+          perror("incorrect data format, size of ack data should be 12 bytes");
           exit(1);
         }
         // when ack is larger than current
-        memcpy(&received_ack_number, ack_msg_buf, sizeof(int));
+        memcpy(&received_ack_number, ack_msg_buf, sizeof(unsigned long long int));
+        memcpy(&receiver_window, ack_msg_buf + sizeof(unsigned long long int), sizeof(unsigned int));
         if(received_ack_number >= expected_ack_number){
-          uint32_t ack_diff = received_ack_number - expected_ack_number + 1;
-          if(isFastRecovery){}
-          if(isSST){}
+          if(received_ack_number == packet_total_numbers){
+            transmission_finished_flag = true;
+            break;
+          }
+          unsigned int ack_diff = ()received_ack_number - expected_ack_number + 1;
+          if(isFastRecovery){
+            // TODO: react after dupACK
+          }
+          if(isSST){
+            // TODO: react when in SST
+          }
           if(isSlowStart){
             // cwsize, cwstart, cwend update
             // current_transmit_round
-            if()
-            cwnd_size = cwnd_size + ack_diff;
-            cwnd_start = received_ack_number % PACKET_BUFFER_SIZE;
-            cwnd_end = (cwnd_start + cwnd_size ) % PACKET_BUFFER_SIZE;
-          }else{
+            if(ack_diff+cwnd_size > ss_threshold){
+              int diff = ss_threshold - cwnd_size;
+              cwnd_size = ss_threshold;
+              countAfterThreshold = ack_diff - diff;
 
+            }
+            else{
+              // update and move forward to transport
+              cwnd_size = cwnd_size + ack_diff;
+              cwnd_start = received_ack_number % PACKET_BUFFER_SIZE;
+              cwnd_end = (cwnd_start + cwnd_size ) % PACKET_BUFFER_SIZE;
+
+            }
           }
+          wait_flag = false;
         }else{
+          // TODO: Fast Recovery
+          // received ack number <(may be wrap around) expected number, outdated(should be ignored) or dupack()
+          if (lastAckedNum == received_ack_number){
+            dupAckCount ++;
+            if(dupAckCount == 3){
+              isSlowStart = true;
+              ss_threshold = ss_threshold /2;  // TODO: how to narrow down, lose precision
+
+            }
+          }
           continue;
         }
-        wait_flag = false;
+
+
       }
 
 
       Packet * current_packet = prepareData(fp, current_sequenceNumber);
-      memcpy(current_msg, &(current_packet->sequenceNumber), sizeof(int));
-      memcpy(current_msg + 8, current_packet->data, current_packet->length);
+      int cwnd_current_pos = current_sequenceNumber % PACKET_BUFFER_SIZE;
+      if (packet_window[cwnd_current_pos] != NULL){
+        delete(packet_window[cwnd_current_pos]);
+      }
+      packet_window[cwnd_current_pos] = current_packet;
+
+      memcpy(current_msg, &(current_packet->sequenceNumber), sizeof(unsigned long long int));
+      memcpy(current_msg + 12, current_packet->data, current_packet->length);
 
       /* test for packet obj*/
       // cout << "this is a test for sending out the first packet: " <<  current_packet->sequenceNumber << "  this is for packet data: " << current_packet->data << endl;
@@ -235,9 +279,12 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
       // cout << " total_round:" << total_round << endl;
       // cout << " packet_total_numbers:" << packet_total_numbers << endl; // total number of packets = total_bytes / 1464
       // cout << " last_packet_size:" << last_packet_size << endl;
-      sendto(s, current_msg, current_packet->length, 0, (sockaddr*)&si_other, slen);
+      sendto(s, current_msg, current_packet->length  + BLOCK_SIZE_FOR_HEADER, 0, (sockaddr*)&si_other, slen);
+
       current_sequenceNumber++;
-      if(current_sequenceNumber > )
+      if( current_sequenceNumber  ){
+
+      }
 
       wait_flag = true;
     }
