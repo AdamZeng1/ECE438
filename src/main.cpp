@@ -4,11 +4,31 @@
 #include<cstring>
 #include<typeinfo>
 #include<ctime>
+#include<string.h>
+#include<stdio.h>
+#include<stdint.h>
 
 #define TEST 26
 using namespace std;
 
 int test_macro;
+
+void printBits(size_t const size, void const * const ptr){
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+
+    // for (i=size-1;i>=0;i--)
+    for (i = 0; i < size; i++)
+    {
+        for (j=7;j>=0;j--)
+        {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+    }
+    puts("");
+}
 
 int main(int argc, char * argv[]){
 
@@ -16,11 +36,7 @@ int main(int argc, char * argv[]){
     cout << "there shouldn't be any arguments except the name of the file";
   }
 
-
-
-  char data[20] = {"abcndabcndabcndabcn"};
-  // memset(data, 0, sizeof data);
-  long sequenceNumber = 72L;
+  unsigned long long int  sequenceNumber = 256L;
   int receiveWindow = 73;
 
   time_t timer;
@@ -31,8 +47,8 @@ int main(int argc, char * argv[]){
   // time(&timer);  /* get current time; same as: timer = time(NULL)  */
   // double t = difftime(timer,std_time);
   time(&timer);
-  long int t = timer;
-
+  int t = timer;
+  char* data = "alice and bob ";
   Packet * test = new Packet(sequenceNumber, t, 1500, data);
   // test->setSequenceNumber(sequenceNumber);
   // test->setData(data);
@@ -51,28 +67,48 @@ int main(int argc, char * argv[]){
 
 
   char current_msg[20] = {};
-  char * shift = current_msg + 4;
-  int addr = (long) current_msg;
-  int addr_shift = (long) shift;
-  // char * current_msg = (char*)malloc(30);
-  // memset(current_msg, 0, 30);
+  char * shift = "yeah";
 
-  memcpy(current_msg, &(test->sequenceNumber),4 );
-  memcpy(current_msg + 4, &(test->receiveWindow), sizeof(int));
+  char * tt = "hey";
+
+  char * ttt[20];
+  memset(ttt, 0, 20);
+  ttt[0] = shift;
+  ttt[1] = tt;
+  cout << "size " << sizeof(ttt[0]) << " and " << sizeof(ttt[1]) << endl;
+  cout << "size " << ttt[0] << " and " << ttt[1]<< endl;
+
+  // cout << sizeof(shift) << "  <- ptr size" << endl;
+  memset(current_msg, 0, sizeof(unsigned long long int));
+
+
+  unsigned long long int z = 42949689406372972899L;
+  cout << "long int " << z << endl;
+  uint32_t m = (uint32_t) z;
+  cout << "unsigned int " << m << endl;
+  // memcpy(current_msg, &(sequenceNumber), sizeof(unsigned long long int) );
+  // memcpy(current_msg, )
+  // memcpy(shift, &(test->receiveWindow), sizeof(int));
+  // memcpy(&z, tt[0], 8);
+  // cout << "success: ? " << z << endl;
   cout << "this is current_msg: " << current_msg << endl;
-  cout << "this is current_msg + 4: " <<  shift << endl;
-  cout << "this is addr of current_msg: " << addr << " and shift: " << addr_shift << endl;
+  // for(int i = 0; i < sizeof(unsigned long long int); i++){
+  //   cout << "the " << i << "th char: " << current_msg[i] << endl;
+  // }
+  //
 
-  for(int i = 0; i < sizeof(current_msg); i++){
-    cout << current_msg[i] << endl;
-  }
+  // printBits(8, t);
+  // cout << "latter 8 bits: " << endl;
+  // printBits(8, t + 8);
+  // cout << "this is current_msg + 8: " <<  shift << endl;
+  // cout << "test_> seq: " << test->sequenceNumber << endl;
+  // cout << "this is addr of current_msg: " << addr << " and shift: " << addr_shift << endl;
+  string tmp = "";
+  tmp.append("failed in sending the packet");
+  tmp.append(to_string(z));
+  cout << tmp.c_str() << endl;
 
-  // cout << "this is the seq num: " << test->getSequenceNumber();
-  // cout << endl;
-  // cout << "this is the data: " << test->getData();
-  // cout << endl;
-  // cout << "this is the rec win: "<< test->getReceiveWindow();
-  // cout << endl;
+  cout << "type of :" << sizeof(14134324L * 21434234) << endl;
 
   return 0;
 }

@@ -200,10 +200,18 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     Packet * current_packet = prepareData(fp, current_sequenceNumber);
     memcpy(current_msg, &(current_packet->sequenceNumber), sizeof(unsigned long long int));
     memcpy(current_msg + 12, current_packet->data, current_packet->length);
+
+    cout << "came here!" << endl;
+
     byteSent = sendto(s, current_msg, current_packet->length, 0, (sockaddr*)&si_other, slen);
+    if (byteSent == -1){
+      break;
+    }
     if(current_sequenceNumber == packet_total_numbers){
       break;
-    }else{
+    }
+    if
+    else{
       current_sequenceNumber++;
     }
   }

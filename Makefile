@@ -1,22 +1,22 @@
-EXEC_SENDER = minimun_file_sender
-EXEC_RECEIVER = receiver_main
+EXEC_SENDER = reliable_sender
+EXEC_RECEIVER = reliable_receiver
 
 
 COMPILER = g++
 
-all: minimun_file_sender receiver_main
+all: reliable_sender reliable_receiver
 
-minimun_file_sender: minimun_file_sender.o test_obj.o
-	$(COMPILER) -pthread minimun_file_sender.o test_obj.o -o minimun_file_sender
+reliable_sender: reliable_sender.o test_obj.o
+	$(COMPILER) -pthread reliable_sender.o test_obj.o -o reliable_sender
 
-receiver_main: receiver_main.o
-	$(COMPILER) -pthread receiver_main.o -o receiver_main
+reliable_receiver: reliable_receiver.o
+	$(COMPILER) -pthread reliable_receiver.o -o reliable_receiver
 
-minimun_file_sender.o: src/minimun_file_sender.cpp
-	$(COMPILER) -c src/minimun_file_sender.cpp
+reliable_sender.o: src/reliable_sender.cpp
+	$(COMPILER) -c src/reliable_sender.cpp
 
-receiver_main.o: src/receiver_main.cpp
-	$(COMPILER) -c src/receiver_main.cpp
+reliable_receiver.o: src/reliable_receiver.cpp
+	$(COMPILER) -c src/reliable_receiver.cpp
 
 test_obj.o: src/test_obj.cpp
 	$(COMPILER) -c src/test_obj.cpp
