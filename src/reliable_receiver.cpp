@@ -68,12 +68,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             diep("Finished: receive ends!");
         }
 
-        char seqBuf[32];
         long long int currSeqNum;
         char contentBuf[1600];
 	    memset(contentBuf, 0, sizeof(contentBuf));
-        int seqI;
-        int contentI;
 
         //1.get seq num
         memcpy(&currSeqNum, buf, sizeof(long long int));
@@ -85,51 +82,44 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         cout << "recv bytes: " << numbytes << endl;
         cout << "seqnum: " << currSeqNum << endl;
         cout << "content: " << contentStr << endl;
-        //a packet that arrives too early, buffer it, and send the dup ack
-        if (currSeqNum > orgPlanSeq && (receivedBufferedMap.find(currSeqNum) == receivedBufferedMap.end() || receivedBufferedMap[currSeqNum] == "")) {
-	    cout << "arrive early" << endl;
+        //a packet that arrives too early, buffer it, and send dup acks
+        // if (currSeqNum > orgPlanSeq && (receivedBufferedMap.find(currSeqNum) == receivedBufferedMap.end() || receivedBufferedMap[currSeqNum] == "")) {
+        if (currSeqNum > orgPlanSeq && receivedBufferedMap[currSeqNum].length() == 0) {
+	        cout << "arrive early" << endl;
             receivedBufferedMap[currSeqNum] = contentStr;
             //under this condition: send back dup ack
-            char ackChars[40];
-            sprintf(ackChars, "%lld", orgPlanSeq - 1);
-            string ackCharsTmp = ackChars;
-            sendto(s, (void*)ackChars, ackCharsTmp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
-            // if (numbytes < 0) {
-            //     diep("send ack error");
-            // }
+            int dupAckSeq = orgPlanSeq - 1;
+            char ackChars[12];
+            memset(ackChars, 0, 12);
+            memcpy(ackChars, &dupAckSeq, 8);
+            sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
         }
         //a packet which is expected, deliver it, and go forward to deliver any buffered packets right behind it as well
         else if (currSeqNum == orgPlanSeq) {
-	    cout << "arrive on time" << endl;
+	        cout << "arrive as expected" << endl;
             // write to file and deliver
             fwrite(contentBuf, sizeof(char), numbytes - 12, fp);
             fflush(fp);
             //release the buffered packets and write them all
             long long int nextPktIdx = currSeqNum + 1;
-            cout << "end writing 1" << endl;
-            while (receivedBufferedMap.find(nextPktIdx) != receivedBufferedMap.end() &&      receivedBufferedMap[nextPktIdx].length() != 0) {
-		        cout << "start writing 2" << endl;
+            // while (receivedBufferedMap.find(nextPktIdx) != receivedBufferedMap.end() &&      receivedBufferedMap[nextPktIdx].length() != 0) {
+            while (receivedBufferedMap[nextPktIdx].length() != 0) {
                 fwrite(receivedBufferedMap[nextPktIdx].c_str(), 1, receivedBufferedMap[nextPktIdx].length(), fp);
                 fflush(fp);
-
-                // writeToFileAndDeliver(receivedBufferedMap[nextPktIdx]);
-                receivedBufferedMap[nextPktIdx] = "";
+                // write to file and deliver
+                map<int, string>::iterator it = receivedBufferedMap.find(nextPktIdx);
+                receivedBufferedMap.erase(it);
                 nextPktIdx ++;
             }
-		    cout << "out" << endl;
+		    cout << "buffered packets: released and delivered!" << endl;
             lastAckedNum = nextPktIdx - 1;
             orgPlanSeq = nextPktIdx;
-        }
 
-        char ackChars[12];
-        memset(ackChars, 0, 12);
-        memcpy(ackChars, &lastAckedNum, 8);
-        // sprintf(ackChars, "%lld", lastAckedNum);
-        // string ackCharsTmp = ackChars;
-        sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
-        // if (numbytes < 0) {
-        //     diep("send ack error");
-        // }
+            char ackChars[12];
+            memset(ackChars, 0, 12);
+            memcpy(ackChars, &lastAckedNum, 8);
+            sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
+        }
     }
 
     close(s);
