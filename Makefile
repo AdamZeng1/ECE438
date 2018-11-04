@@ -1,60 +1,40 @@
-#If you use threads, add -pthread here.
-COMPILERFLAGS = -g -Wall -Wextra -Wno-sign-compare 
-
-#Any libraries you might need linked in.
-LINKLIBS = -lpthread
-
-#The components of each program. When you create a src/foo.c source file, add obj/foo.o here, separated
-#by a space (e.g. SOMEOBJECTS = obj/foo.o obj/bar.o obj/baz.o).
-SERVEROBJECTS = obj/receiver_main.o
-CLIENTOBJECTS = obj/sender_main.o
-
-#Every rule listed here as .PHONY is "phony": when you say you want that rule satisfied,
-#Make knows not to bother checking whether the file exists, it just runs the recipes regardless.
-#(Usually used for rules whose targets are conceptual, rather than real files, such as 'clean'.
-#If you DIDNT mark clean phony, then if there is a file named 'clean' in your directory, running
-#`make clean` would do nothing!!!)
-.PHONY: all clean
-
-#The first rule in the Makefile is the default (the one chosen by plain `make`).
-#Since 'all' is first in this file, both `make all` and `make` do the same thing.
-#(`make obj server client talker listener` would also have the same effect).
-#all : obj server client talker listener
-all : obj reliable_sender reliable_receiver
-
-#$@: name of rule's target: server, client, talker, or listener, for the respective rules.
-#$^: the entire dependency string (after expansions); here, $(SERVEROBJECTS)
-#CC is a built in variable for the default C compiler; it usually defaults to "gcc". (CXX is g++).
-reliable_receiver: $(SERVEROBJECTS)
-	$(CC) $(COMPILERFLAGS) $^ -o $@ $(LINKLIBS)
+EXEC_SENDER = minimun_file_sender
+EXEC_RECEIVER = receiver_main
 
 
+COMPILER = g++
 
-#So, how does all of this work? This rule is saying 
+all: minimun_file_sender receiver_main
+
+minimun_file_sender: minimun_file_sender.o test_obj.o
+	$(COMPILER) -pthread minimun_file_sender.o test_obj.o -o minimun_file_sender
+
+receiver_main: receiver_main.o
+	$(COMPILER) -pthread receiver_main.o -o receiver_main
+
+minimun_file_sender.o: src/minimun_file_sender.cpp
+	$(COMPILER) -c src/minimun_file_sender.cpp
+
+receiver_main.o: src/receiver_main.cpp
+	$(COMPILER) -c src/receiver_main.cpp
+
+test_obj.o: src/test_obj.cpp
+	$(COMPILER) -c src/test_obj.cpp
+
+# mp3server : mp3.o libcommon.o
+# 	$(COMPILER) -pthread mp3server.cpp mp3.o libcommon.o -o mp3server
 #
-#"I am how you make the thing called client. If the thing called client is required, but doesn't 
-#exist / is out of date, then the way to make it is to run 
-#`$(CC) $(COMPILERFLAGS) $^ -o $@ $(LINKLIBS)`. 
-#But, you can't start doing that until you are sure all of my dependencies ($(CLIENTOBJECTS)) are up to date."
+# mp3client: mp3.o libcommon.o
+# 	$(COMPILER) -pthread mp3client.cpp mp3.o libcommon.o -o mp3client
 #
-#In this case, CLIENTOBJECTS is just obj/client.o. So, if obj/client.o doesn't exist or is out of date, 
-#make will first look for a rule to build it. That rule is the 'obj/%.o' one, below; the % is a wildcard.
-reliable_sender: $(CLIENTOBJECTS)
-	$(CC) $(COMPILERFLAGS) $^ -o $@ $(LINKLIBS)
+# mp3.o : mp3.cc
+# 	$(COMPILER) -I /usr/lib/x86_64-redhat-linux5E/include mp3.cc -c
+#
+# mp3client.o : mp3client.cpp
+# 	$(COMPILER) libcommon.cpp mp3client.cpp
+#
+# mp3server.o : mp3server.cpp
+# 	$(COMPILER) libcommon.cpp mp3server.cpp
 
-
-
-#RM is a built-in variable that defaults to "rm -f".
-clean :
-#	$(RM) obj/*.o server client talker listener
-	$(RM) obj/*.o reliable_sender reliable_receiver
-
-#$<: the first dependency in the list; here, src/%.c. (Of course, we could also have used $^).
-#The % sign means "match one or more characters". You specify it in the target, and when a file
-#dependency is checked, if its name matches this pattern, this rule is used. You can also use the % 
-#in your list of dependencies, and it will insert whatever characters were matched for the target name.
-obj/%.o: src/%.c
-	$(CC) $(COMPILERFLAGS) -c -o $@ $<
-obj:
-	mkdir -p obj
-
+clean:
+	-rm *.o
