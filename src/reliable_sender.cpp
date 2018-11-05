@@ -61,7 +61,6 @@ struct sockaddr_in si_other;
 
 // int current_transmit_round; // set to be 1 when init, plus one if circlely using the packet_window
 // int total_round;
-// long int current_time;
 unsigned int cwnd_start, cwnd_end; // set to be INIT_CWND_START
 unsigned int ss_threshold, cwnd_size; // set to be INIT_SST, 1
 bool wait_flag; // set to be false when init
@@ -236,10 +235,10 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     struct timeval round_trip_time;
     memset(&timeout_struct, 0, sizeof(timeout_struct));
     memset(&round_trip_time, 0, sizeof(timeout_struct));
-    long long int current_time;
+    unsigned long long int current_time;
     bool isFirstPacket = true;
     unsigned long long int timer_cwnd_starter = 0L;
-    unsigned int timeout_ms = 0;
+    unsigned int timeout_ms = 0; // only metric for timeout of certain packet
 
 
     /* sending buffer and receiving buffer */
@@ -247,18 +246,17 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     memset(current_msg, 0, BLOCK_SIZE_FOR_DATA);
     char ack_msg_buf[BLOCK_SIZE_FOR_HEADER];
     memset(ack_msg_buf, 0, BLOCK_SIZE_FOR_HEADER);
-    bool ack_buf[PACKET_BUFFER_SIZE];
 
 
     /* threading TBD */
-    // TODO: used to checkout the timeout
+    // TODO: used to checkout the timeout threading
 
     /* receiving params */
     int byteReceived = 0;
     unsigned long long int received_ack_number;
-    unsigned int receiver_window;
+    unsigned int receiver_window; // received but not currently in use
     struct sockaddr_in addr;
-    socklen_t addr_size = sizeof(addr);
+    socklen_t addr_size = sizeof(addr);// container for recvfrom
 
     // all false --flag-- when init
     while(!transmission_finished_flag){
@@ -286,30 +284,30 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             timeout_struct.tv_usec = 40000;
           }
           timeout_ms = (unsigned int) (timeout_struct.tv_usec / 1000);
-          cout << "expect_ack  " << expected_ack_number << "  tv_sec-"  << timeout_struct.tv_sec << "  tv_usec-" << timeout_struct.tv_usec << endl;
+          cout << "expected_ack  " << expected_ack_number << "  tv_sec-"  << timeout_struct.tv_sec << "  tv_usec-" << timeout_struct.tv_usec << endl;
           isFirstPacket = false;
         }
 
-        sockStateSet = setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &(timeout_struct), (unsigned int) sizeof(timeout_struct));
+        sockStateSet = setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &(timeout_struct), sizeof(timeout_struct));
 
         timer_cwnd_starter = currentTime_ms() - (packet_window[cwnd_start])->sentTime;
         if(timer_cwnd_starter >= timeout_ms){
           timeout_flag = true;
         }
 
-        cout << "timer: " <<  timer_cwnd_starter << endl;
+        cout << "timer for packet number " << packet_window[cwnd_start]->sequenceNumber << "   is: "<<  timer_cwnd_starter << endl;
 
-        /* useless when there is always dupAck coming */
+        /* first cond alone only works for first round timeout or possibly last single packet */
         if(sockStateSet < 0 || timeout_flag){
           cout << "sockState-"<<sockStateSet  <<  "   timeout_flag-" << timeout_flag <<   "   timer_cwnd_starter-"<< timer_cwnd_starter <<  endl;
 
           /* timeout handler */
           Packet * resend_pkt = packet_window[cwnd_start];
-          long long int current_time= currentTime_ms();
+          current_time= currentTime_ms();
           resend_pkt->sentTime = current_time;
           int byteSent = send_msg(current_msg, resend_pkt);
           if(byteSent <= 0){
-            perror("error in resending when timeout happens");
+            perror("error in resending for timeout handler");
           }
           cout << "resend packet: bytessent-" << byteSent  << "  seqNum-" << resend_pkt->sequenceNumber << endl;
           cwnd_size = 1;
@@ -321,14 +319,14 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           timeout_flag = false;
           continue;
         }else{
+          // retrieve packet from sysbuf
           byteReceived = recvfrom(s, ack_msg_buf, sizeof(ack_msg_buf), 0, (sockaddr *)&addr, &addr_size);
           // cout << "###DEBUG### recv from worked: got bytes " << byteReceived << endl;
         }
 
-        if(byteReceived <= 0){
+        if(byteReceived < 0){
           char * mesg = strerror(errno);
           cout << "error occurred, the messages listed below: " << "errorcode-" << errno << "  " << mesg << endl;
-
           cwnd_size = 1;
           ss_threshold = cwnd_size/2;
           if(ss_threshold < 1){ss_threshold = 1;}
@@ -338,17 +336,20 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           continue;
           // isFastRecovery = false;
         }
+        if(byteReceived == 0){cout << "receive 0 bytes from the sysbuf" << endl;}
 
-        // when ack is larger than current
-        sscanf( ack_msg_buf, "%lld", &received_ack_number);
+        /* receive value parser */
+        sscanf(ack_msg_buf, "%lld", &received_ack_number);
         // memcpy(&received_ack_number, ack_msg_buf, sizeof(unsigned long long int));
         // memcpy(&receiver_window, ack_msg_buf + sizeof(unsigned long long int), sizeof(unsigned int));
+
+        /* when ack is larger than current */
         if(received_ack_number >= expected_ack_number){
 
           /* check for final of transmit */
           if(received_ack_number == packet_total_numbers - 1){
             transmission_finished_flag = true;
-            cout << "###FIN### received_ack_number: " <<received_ack_number << "  current_sequenceNumber: "<< current_sequenceNumber  << endl;
+            cout << "###FIN### received new ack;   ack_number: " <<received_ack_number << "  current_sequenceNumber: "<< current_sequenceNumber;
             cout << "cwnd(not update last time):  start-" << cwnd_start << " size-" << cwnd_size << endl;
             break;
           }
@@ -363,7 +364,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           current_time = currentTime_ms();
           Packet * legacy_packet = packet_window[rd_mod - 1];
           round_trip_time.tv_sec =  (current_time - legacy_packet->sentTime) / 1000;
-          round_trip_time.tv_usec = (current_time - legacy_packet->sentTime) % 1000;
+          round_trip_time.tv_usec = ((current_time - legacy_packet->sentTime) % 1000) * 1000 ;
+          cout << "update round time after the first ack:  tv_usec-" << round_trip_time.tv_usec << endl;
           }
 
           if(isSST){
@@ -416,33 +418,32 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           cwnd_end = (cwnd_start + cwnd_size) % PACKET_BUFFER_SIZE;
           lastAckedNum = received_ack_number;
           expected_ack_number = received_ack_number + 1;
-
-
-          cout << "###DEBUG### after receiving ack " << received_ack_number << " we get cwnd size " << cwnd_size <<  "start: " << cwnd_start  << endl;
+          cout << "###DEBUG### receiving new ack-" << received_ack_number << "  afterwards, we get cwnd size " << cwnd_size <<  "start: " << cwnd_start  << endl;
         }else{
           // TODO: Fast Recovery or outdate ack
           // received ack number <(may be wrap around) expected number, outdated(should be ignored) or dupack()
           if (lastAckedNum == received_ack_number){
             dupAckCount ++;
-            cout << "###DEBUG### after receiving ack " << received_ack_number << " we get cwnd size " << cwnd_size <<  "start: " << cwnd_start  << endl;
-            
+            cout << "###DEBUG### dup ack-" << received_ack_number << "  afterwards, we get cwnd size " << cwnd_size <<  "start: " << cwnd_start  << endl;
+
             if(dupAckCount == 3 && !isFastRecovery){
+              cout << "dupack number == 3, start fast recovery" << endl;
               isSlowStart = false;
               isFastRecovery = true;
               ss_threshold = cwnd_size /2;
               if(ss_threshold < 1){ss_threshold = 1;}
               cwnd_size = ss_threshold + 3;
               cwnd_end = cwnd_start + cwnd_size;
+              current_sequenceNumber = cwnd_end;
               // TODO: resend the missing packet
               Packet * resend_packet = packet_window[cwnd_start];
-              long long int current_time= currentTime_ms();
+              current_time= currentTime_ms();
               resend_packet->sentTime = current_time;
               int sentByte = send_msg(current_msg, resend_packet);
 
               if(sentByte <= 0){
                 perror("resend failed after 3 dupACK");
               }
-
               cout << "resent pkt sequenceNumber: " << resend_packet->sequenceNumber << endl;
               wait_flag = true;
             }
@@ -450,15 +451,22 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
               //update cwnd, and
               cwnd_size++;
               cwnd_end = (cwnd_start+cwnd_size)%PACKET_BUFFER_SIZE;
-              current_sequenceNumber = cwnd_end - 1;
+              current_sequenceNumber = cwnd_end;
+              Packet * resend_packet = packet_window[cwnd_start];
+              current_time= currentTime_ms();
+              resend_packet->sentTime = current_time;
+              int sentByte = send_msg(current_msg, resend_packet);
+              cout << "resend for " << dupAckCount - 3 <<  " times for the fast recovery " << endl;
+
               break;
             }
-          } // else lastAckNumber outdated
-          continue;
+          } else{continue; } // else lastAckNumber outdated}
         }
       }/* WAIT FLAG END HERE */
 
-
+      if(dupAckCount == 3 && isFastRecovery){
+        continue;
+      }
 
 
 
@@ -478,12 +486,13 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
       /* send buffer */
       int sentByte = send_msg(current_msg, current_packet);
-      if(isFirstPacket){
-        timer_cwnd_starter = current_packet->sentTime;
-      }
+
+      if(isFastRecovery ) {
+        cout << "###DEBUG### fast recovery extended sending, sequence number: " << current_sequenceNumber << "  sent byte(data+head): " << sentByte << " sent byte(head): " << BLOCK_SIZE_FOR_HEADER <<endl;
+      }else{
       cout << "###DEBUG### sequence number: " << current_sequenceNumber << "  sent byte(data+head): " << sentByte << " sent byte(head): " << BLOCK_SIZE_FOR_HEADER <<endl;
       // fputs(LOGBUFF, fp);
-
+      }
 
       if(sentByte ==  -1 || sentByte < current_packet->length){
         cout << "failed in sending the packet Num. " << current_sequenceNumber << ". Have sent " << sentByte << " in this transmission. ";
