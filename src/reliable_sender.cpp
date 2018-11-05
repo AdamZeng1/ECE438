@@ -277,7 +277,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           // timeout_struct; round_trip_time;
           timeout_struct.tv_sec = round_trip_time.tv_sec;
           timeout_struct.tv_usec = round_trip_time.tv_usec;
-          timeout_ms = (unsigned int) (timeout_struct.tv_usec / 1000);
+
           cout << "init timeout_ms: " << timeout_ms << " ms" << endl;
           // milliseconds
           struct timeval * opt = &timeout_struct;
@@ -285,7 +285,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             timeout_struct.tv_sec = 0;
             timeout_struct.tv_usec = 40000;
           }
-          cout << "expect_ack  " << expected_ack_number << "  tv_sec-"  << timeout_struct->tv_sec << "  tv_usec-" << timeout_struct->tv_usec << endl;
+          timeout_ms = (unsigned int) (timeout_struct.tv_usec / 1000);
+          cout << "expect_ack  " << expected_ack_number << "  tv_sec-"  << timeout_struct.tv_sec << "  tv_usec-" << timeout_struct.tv_usec << endl;
           isFirstPacket = false;
         }
 
@@ -295,6 +296,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         if(timer_cwnd_starter >= timeout_ms){
           timeout_flag = true;
         }
+
+        cout << "timer: " <<  timer_cwnd_starter << endl;
 
         /* useless when there is always dupAck coming */
         if(sockStateSet < 0 || timeout_flag){
@@ -336,13 +339,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           // isFastRecovery = false;
         }
 
-        if(byteReceived > 0 && byteReceived!= sizeof(ack_msg_buf)){
-          perror("incorrect data format, size of ack data should be 12 bytes");
-          exit(1);
-        }
-
         // when ack is larger than current
-        sscanf("%lld", ack_msg_buf, received_ack_number);
+        sscanf( ack_msg_buf, "%lld", &received_ack_number);
         // memcpy(&received_ack_number, ack_msg_buf, sizeof(unsigned long long int));
         // memcpy(&receiver_window, ack_msg_buf + sizeof(unsigned long long int), sizeof(unsigned int));
         if(received_ack_number >= expected_ack_number){
@@ -426,6 +424,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           // received ack number <(may be wrap around) expected number, outdated(should be ignored) or dupack()
           if (lastAckedNum == received_ack_number){
             dupAckCount ++;
+            cout << "###DEBUG### after receiving ack " << received_ack_number << " we get cwnd size " << cwnd_size <<  "start: " << cwnd_start  << endl;
+            
             if(dupAckCount == 3 && !isFastRecovery){
               isSlowStart = false;
               isFastRecovery = true;
@@ -438,9 +438,12 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
               long long int current_time= currentTime_ms();
               resend_packet->sentTime = current_time;
               int sentByte = send_msg(current_msg, resend_packet);
+
               if(sentByte <= 0){
                 perror("resend failed after 3 dupACK");
               }
+
+              cout << "resent pkt sequenceNumber: " << resend_packet->sequenceNumber << endl;
               wait_flag = true;
             }
             if(dupAckCount > 3 && isFastRecovery){
