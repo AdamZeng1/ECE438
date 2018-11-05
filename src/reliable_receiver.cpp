@@ -89,11 +89,13 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             receivedBufferedMap[currSeqNum] = contentStr;
             //under this condition: send back dup ack
             int dupAckSeq = orgPlanSeq - 1;
-            char ackChars[12];
+            char ackChars[40];
+            sprintf(ackChars, "%lld", dupAckSeq);
+            string temp = ackChars;
             cout << "dupAckSeq: "  << dupAckSeq << endl;
-            memset(ackChars, 0, 12);
-            memcpy(ackChars, &dupAckSeq, 8);
-            sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
+            // memset(ackChars, 0, 12);
+            // memcpy(ackChars, &dupAckSeq, 8);
+            sendto(s, ackChars, temp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
         }
         //a packet which is expected, deliver it, and go forward to deliver any buffered packets right behind it as well
         else if (currSeqNum == orgPlanSeq) {
@@ -116,19 +118,23 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             lastAckedNum = nextPktIdx - 1;
             orgPlanSeq = nextPktIdx;
 
-            char ackChars[12];
-            memset(ackChars, 0, 12);
-            memcpy(ackChars, &lastAckedNum, 8);
-            sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
+            char ackChars[40];
+            sprintf(ackChars, "%lld", lastAckedNum);
+            string temp = ackChars;
+            // memset(ackChars, 0, 12);
+            // memcpy(ackChars, &currSeqNum, 8);
+            sendto(s, ackChars, temp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
             cout << "normalAckSeq: "  << lastAckedNum << endl;
             cout << endl;
         }
         //an old packet, just resend the ack
         else if (currSeqNum < orgPlanSeq) {
-            char ackChars[12];
-            memset(ackChars, 0, 12);
-            memcpy(ackChars, &currSeqNum, 8);
-            sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
+            char ackChars[40];
+            sprintf(ackChars, "%lld", currSeqNum);
+            string temp = ackChars;
+            // memset(ackChars, 0, 12);
+            // memcpy(ackChars, &currSeqNum, 8);
+            sendto(s, ackChars, temp.length(), 0, (struct sockaddr *)&their_addr, their_addr_size);
             cout << "AnOldAckSeq: "  << currSeqNum << endl;
             cout << endl;
         }
