@@ -6,7 +6,7 @@ Packet::Packet(){
   this->sequenceNumber = 2;
 }
 
-Packet::Packet(unsigned long long int seq, long int t, int length, char dat[]){
+Packet::Packet(unsigned long long int seq, long long int t, int length, char dat[]){
   this->sequenceNumber = seq;
   this->sentTime = t;
   this->data = dat;
@@ -41,6 +41,6 @@ void Packet::setData(char dat[]){
   this->data = dat;
 }
 
-void Packet::setSentTime(long int t){
+void Packet::setSentTime(long long int t){
   this->sentTime = t;
 }

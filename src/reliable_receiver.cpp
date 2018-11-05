@@ -51,8 +51,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 	/*TODO: Now receive data and send acknowledgements */
     //Data structure and constant initialization
     map<int, string> receivedBufferedMap;    //c++??
-    long long int lastAckedNum = -1;
-    long long int orgPlanSeq = 0;
+    unsigned long long int lastAckedNum = -1;
+    unsigned long long int orgPlanSeq = 0;
 
     char buf[1600];
     memset(buf, 0, sizeof(buf));
@@ -68,20 +68,20 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             diep("Finished: receive ends!");
         }
 
-        long long int currSeqNum;
+        unsigned long long int currSeqNum;
         char contentBuf[1600];
-	    memset(contentBuf, 0, sizeof(contentBuf));
+	      memset(contentBuf, 0, sizeof(contentBuf));
 
         //1.get seq num
-        memcpy(&currSeqNum, buf, sizeof(long long int));
+        memcpy(&currSeqNum, buf, sizeof(unsigned long long int));
 
         //2.get content
         memcpy(&contentBuf, buf + 12, numbytes - 12);
         string contentStr = contentBuf; //c++
-        cout << buf + 12 << endl;
+        // cout << buf + 12 << endl;
         cout << "recv bytes: " << numbytes << endl;
         cout << "seqnum: " << currSeqNum << endl;
-        cout << "content: " << contentStr << endl;
+        // cout << "content: " << contentStr << endl;
         //a packet that arrives too early, buffer it, and send dup acks
         // if (currSeqNum > orgPlanSeq && (receivedBufferedMap.find(currSeqNum) == receivedBufferedMap.end() || receivedBufferedMap[currSeqNum] == "")) {
         if (currSeqNum > orgPlanSeq && receivedBufferedMap[currSeqNum].length() == 0) {
@@ -90,6 +90,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             //under this condition: send back dup ack
             int dupAckSeq = orgPlanSeq - 1;
             char ackChars[12];
+            cout << "dupAckSeq: "  << dupAckSeq << endl;
             memset(ackChars, 0, 12);
             memcpy(ackChars, &dupAckSeq, 8);
             sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
@@ -101,7 +102,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             fwrite(contentBuf, sizeof(char), numbytes - 12, fp);
             fflush(fp);
             //release the buffered packets and write them all
-            long long int nextPktIdx = currSeqNum + 1;
+            unsigned long long int nextPktIdx = currSeqNum + 1;
             // while (receivedBufferedMap.find(nextPktIdx) != receivedBufferedMap.end() &&      receivedBufferedMap[nextPktIdx].length() != 0) {
             while (receivedBufferedMap[nextPktIdx].length() != 0) {
                 fwrite(receivedBufferedMap[nextPktIdx].c_str(), 1, receivedBufferedMap[nextPktIdx].length(), fp);
@@ -119,6 +120,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             memset(ackChars, 0, 12);
             memcpy(ackChars, &lastAckedNum, 8);
             sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
+            cout << "normalAckSeq: "  << lastAckedNum << endl;
+            cout << endl;
         }
     }
 

@@ -16,7 +16,7 @@ class Packet
     unsigned long long int sequenceNumber;
     char * data;
     int receiveWindow;
-    long int sentTime;
+    long long int sentTime;
     int length;
     // int getReceiveWindow();
     // char * getData();
@@ -24,12 +24,12 @@ class Packet
     // long getSequenceNumber();
 
     Packet();
-    Packet(unsigned long long int seq, long int t, int length, char dat[]);
+    Packet(unsigned long long int seq, long long int t, int length, char dat[]);
 
     void setReceiveWindow(int rec);
     void setSequenceNumber(unsigned long long int seq);
     void setData(char dat[]);
-    void setSentTime(long int t);
+    void setSentTime(long long int t);
 
 };
 
