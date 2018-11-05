@@ -238,6 +238,9 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     memset(&round_trip_time, 0, sizeof(timeout_struct));
     long long int current_time;
     bool isFirstPacket = true;
+    unsigned long long int timer_cwnd_starter = 0L;
+    unsigned int timeout_ms = 0;
+
 
     /* sending buffer and receiving buffer */
     char current_msg[BLOCK_SIZE_FOR_DATA]; // gabage initial value
@@ -274,7 +277,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           // timeout_struct; round_trip_time;
           timeout_struct.tv_sec = round_trip_time.tv_sec;
           timeout_struct.tv_usec = round_trip_time.tv_usec;
-          unsigned int timeout_ms = (unsigned int) (timeout_struct.tv_usec / 1000);
+          timeout_ms = (unsigned int) (timeout_struct.tv_usec / 1000);
+          cout << "init timeout_ms: " << timeout_ms << " ms" << endl;
           // milliseconds
           struct timeval * opt = &timeout_struct;
           if(expected_ack_number == 0){
@@ -285,7 +289,14 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         }
 
         sockStateSet = setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &(timeout_struct), (unsigned int) sizeof(timeout_struct));
-        if(sockStateSet < 0){
+
+        timer_cwnd_starter = currentTime_ms() - (packet_window[cwnd_start])->sentTime;
+        if(timer_cwnd_starter >= timeout_ms){
+          timeout_flag = true;
+        }
+
+        /* useless when there is always dupAck coming */
+        if(sockStateSet < 0 || timeout_flag){
           /* timeout handler */
           Packet * resend_pkt = packet_window[cwnd_start];
           long long int current_time= currentTime_ms();
@@ -300,7 +311,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           cwnd_end = cwnd_start + cwnd_size;
           isSlowStart = true;
           isSST = false;
-
+          timeout_flag = false;
           continue;
         }else{
           byteReceived = recvfrom(s, ack_msg_buf, sizeof(ack_msg_buf), 0, (sockaddr *)&addr, &addr_size);
@@ -457,7 +468,9 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
       /* send buffer */
       int sentByte = send_msg(current_msg, current_packet);
-
+      if(isFirstPacket){
+        timer_cwnd_starter = current_packet->sentTime;
+      }
       cout << "###DEBUG### sequence number: " << current_sequenceNumber << "  sent byte(data+head): " << sentByte << " sent byte(head): " << BLOCK_SIZE_FOR_HEADER <<endl;
       // fputs(LOGBUFF, fp);
 
