@@ -342,8 +342,9 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         }
 
         // when ack is larger than current
-        memcpy(&received_ack_number, ack_msg_buf, sizeof(unsigned long long int));
-        memcpy(&receiver_window, ack_msg_buf + sizeof(unsigned long long int), sizeof(unsigned int));
+        sscanf("%lld", ack_msg_buf, received_ack_number);
+        // memcpy(&received_ack_number, ack_msg_buf, sizeof(unsigned long long int));
+        // memcpy(&receiver_window, ack_msg_buf + sizeof(unsigned long long int), sizeof(unsigned int));
         if(received_ack_number >= expected_ack_number){
 
           /* check for final of transmit */
