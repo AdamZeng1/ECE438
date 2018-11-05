@@ -285,6 +285,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             timeout_struct.tv_sec = 0;
             timeout_struct.tv_usec = 40000;
           }
+          cout << "expect_ack  " << expected_ack_number << "  tv_sec-"  << timeout_struct->tv_sec << "  tv_usec-" << timeout_struct->tv_usec << endl;
           isFirstPacket = false;
         }
 
@@ -297,6 +298,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
         /* useless when there is always dupAck coming */
         if(sockStateSet < 0 || timeout_flag){
+          cout << "sockState-"<<sockStateSet  <<  "   timeout_flag-" << timeout_flag <<   "   timer_cwnd_starter-"<< timer_cwnd_starter <<  endl;
+
           /* timeout handler */
           Packet * resend_pkt = packet_window[cwnd_start];
           long long int current_time= currentTime_ms();
@@ -308,6 +311,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           cout << "resend packet: bytessent-" << byteSent  << "  seqNum-" << resend_pkt->sequenceNumber << endl;
           cwnd_size = 1;
           ss_threshold = cwnd_size/2;
+          if(ss_threshold < 1){ss_threshold = 1;}
           cwnd_end = cwnd_start + cwnd_size;
           isSlowStart = true;
           isSST = false;
@@ -324,6 +328,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
           cwnd_size = 1;
           ss_threshold = cwnd_size/2;
+          if(ss_threshold < 1){ss_threshold = 1;}
           cwnd_end = cwnd_start + cwnd_size;
           isSlowStart = true;
           isSST = false;
@@ -424,6 +429,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
               isSlowStart = false;
               isFastRecovery = true;
               ss_threshold = cwnd_size /2;
+              if(ss_threshold < 1){ss_threshold = 1;}
               cwnd_size = ss_threshold + 3;
               cwnd_end = cwnd_start + cwnd_size;
               // TODO: resend the missing packet
