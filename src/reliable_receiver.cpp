@@ -123,6 +123,15 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             cout << "normalAckSeq: "  << lastAckedNum << endl;
             cout << endl;
         }
+        //an old packet, just resend the ack
+        else if (currSeqNum < orgPlanSeq) {
+            char ackChars[12];
+            memset(ackChars, 0, 12);
+            memcpy(ackChars, &currSeqNum, 8);
+            sendto(s, ackChars, 12, 0, (struct sockaddr *)&their_addr, their_addr_size);
+            cout << "AnOldAckSeq: "  << currSeqNum << endl;
+            cout << endl;
+        }
     }
 
     close(s);
