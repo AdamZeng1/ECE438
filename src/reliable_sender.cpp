@@ -326,12 +326,13 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           }
           cout << "resend packet: bytessent-" << byteSent  << "  seqNum-" << resend_pkt->sequenceNumber << endl;
           ss_threshold = cwnd_size /2;
-          cwnd_size = 1;
-          dupAckCount = 0;
           if(ss_threshold < 1){ss_threshold = 1;}
+          // cwnd_size = 1;
+          cwnd_size = ss_threshold;
+          dupAckCount = 0;
           cwnd_end = cwnd_start + cwnd_size;
-          isSlowStart = true;
-          isSST = false;
+          isSlowStart = false;
+          isSST = true;
           timeout_flag = false;
           continue;
         }
@@ -378,6 +379,10 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             if(ack_diff + countAfterThreshold >= cwnd_size){
               countAfterThreshold = ack_diff % cwnd_size;
               cwnd_size++;
+              while(countAfterThreshold >= cwnd_size){
+              countAfterThreshold = countAfterThreshold % cwnd_size;
+              cwnd_size++;
+              }
             }else{
               countAfterThreshold += ack_diff;
             }
@@ -397,12 +402,22 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
               // final state is still in the SS other than SST
               cwnd_size = cwnd_size + ack_diff;
             }
+            if(cwnd_size == 1){
+              current_sequenceNumber = received_ack_number + 1;
+            }
           }
 
           if(isFastRecovery){
-            // TODO: react after dupACK * 3
-            cwnd_size = ss_threshold;
-            //
+            // cwnd_size = ss_threshold;
+            // if(ack_diff > 1){
+            //   // when ackdiff + start
+            //   countAfterThreshold = ack_diff - 1;
+            //   while(countAfterThreshold >= cwnd_size){
+            //     cwnd_size++;
+            //     countAfterThreshold = (countAfterThreshold) % cwnd_size;
+            //   }
+            // }
+
             if(ack_diff > 1){
               // when ackdiff + start
               countAfterThreshold = ack_diff - 1;
@@ -411,12 +426,6 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 countAfterThreshold = (countAfterThreshold) % cwnd_size;
               }
             }
-            isSST = true;
-            isFastRecovery = false;
-            dupAckCount = 0;
-            cout << "exit fast recovery state " << "  cwnd_size"  << cwnd_size <<endl;
-            //DEBUG temp
-            current_sequenceNumber = received_ack_number + 1;
           }
           wait_flag = false;
 
@@ -427,6 +436,15 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
           cwnd_start = rd_mod;
           cwnd_end = (cwnd_start + cwnd_size) % PACKET_BUFFER_SIZE;
+          if(isFastRecovery){
+            isSST = true;
+            isFastRecovery = false;
+            dupAckCount = 0;
+            cout << "exit fast recovery state " << "  cwnd_size"  << cwnd_size <<endl;
+            //DEBUG temp
+            // if(current_sequenceNumber % PACKET_BUFFER_SIZE < cwnd_end)
+            // current_sequenceNumber = cwnd_end;
+          }
           lastAckedNum = received_ack_number;
           expected_ack_number = received_ack_number + 1;
           cout << "###DEBUG### receiving new ack-" << received_ack_number << "  afterwards, we get cwnd size " << cwnd_size <<  "start: " << cwnd_start  << endl;

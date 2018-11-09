@@ -67,7 +67,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         if ((numbytes = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&their_addr, &their_addr_size)) < 0 ) {
             diep("Finished: receive ends!");
         }
-
+        cout << "recv bytes: " << numbytes << endl;
         long long int currSeqNum;
         char contentBuf[1600];
 	      memset(contentBuf, 0, sizeof(contentBuf));
@@ -79,7 +79,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         memcpy(&contentBuf, buf + 12, numbytes - 12);
         string contentStr = contentBuf; //c++
         // cout << buf + 12 << endl;
-        cout << "recv bytes: " << numbytes << endl;
+        //cout << "recv bytes: " << numbytes << endl;
         cout << "seqnum: " << currSeqNum << endl;
         // cout << "content: " << contentStr << endl;
         //a packet that arrives too early, buffer it, and send dup acks
