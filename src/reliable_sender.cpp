@@ -318,14 +318,16 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
           /* timeout handler */
           Packet * resend_pkt = packet_window[cwnd_start];
           current_time= currentTime_ms();
+          // error occurs
           resend_pkt->sentTime = current_time;
           int byteSent = send_msg(current_msg, resend_pkt);
           if(byteSent <= 0){
             perror("error in resending for timeout handler");
           }
           cout << "resend packet: bytessent-" << byteSent  << "  seqNum-" << resend_pkt->sequenceNumber << endl;
-          cwnd_size = 1;
           ss_threshold = cwnd_size /2;
+          cwnd_size = 1;
+          dupAckCount = 0;
           if(ss_threshold < 1){ss_threshold = 1;}
           cwnd_end = cwnd_start + cwnd_size;
           isSlowStart = true;
@@ -404,19 +406,19 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             if(ack_diff > 1){
               // when ackdiff + start
               countAfterThreshold = ack_diff - 1;
-              if(ack_diff - 1 >= cwnd_size){
+              while(countAfterThreshold >= cwnd_size){
                 cwnd_size++;
-                countAfterThreshold = (ack_diff -1) % cwnd_size;
+                countAfterThreshold = (countAfterThreshold) % cwnd_size;
               }
             }
             isSST = true;
-            isFastRecovery == false;
+            isFastRecovery = false;
             dupAckCount = 0;
             cout << "exit fast recovery state " << "  cwnd_size"  << cwnd_size <<endl;
-            // TODO decide whether the wait_flag should be updated here
-          }else{
-            wait_flag = false;
+            //DEBUG temp
+            current_sequenceNumber = received_ack_number + 1;
           }
+          wait_flag = false;
 
           /* uniformly update cwnd pointer */
           // start = 8;
@@ -454,8 +456,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
               current_sequenceNumber = cwnd_end;
               // TODO: resend the missing packet
               Packet * resend_packet = packet_window[cwnd_start];
-              current_time= currentTime_ms();
-              resend_packet->sentTime = current_time;
+              // current_time= currentTime_ms();
+              // resend_packet->sentTime = current_time;
               int sentByte = send_msg(current_msg, resend_packet);
 
               if(sentByte <= 0){
@@ -483,14 +485,13 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         }
       }/* WAIT FLAG END HERE */
 
+      // when the dupAck is piled up to 3, if A. cw == 1
       if(dupAckCount == 3 && isFastRecovery){
         continue;
       }
 
-
-
       /* in case of intended to send only part of the file, with spare cwnd*/
-      if(current_sequenceNumber > packet_total_numbers -1){
+      if(current_sequenceNumber > packet_total_numbers -1 || (current_sequenceNumber % PACKET_BUFFER_SIZE) >= cwnd_end){
         wait_flag = true;
         continue;
       }
@@ -511,7 +512,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
       /* send buffer */
       int sentByte = send_msg(current_msg, current_packet);
 
-      if(isFastRecovery ) {
+      if(isFastRecovery) {
         cout << "###DEBUG### fast recovery extended sending, sequence number: " << current_sequenceNumber << "  sent byte(data+head): " << sentByte << " sent byte(head): " << BLOCK_SIZE_FOR_HEADER <<endl;
       }else{
       cout << "###DEBUG### sequence number: " << current_sequenceNumber << "  sent byte(data+head): " << sentByte << " sent byte(head): " << BLOCK_SIZE_FOR_HEADER <<endl;
