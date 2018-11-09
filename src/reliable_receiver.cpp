@@ -50,16 +50,16 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
 	/*TODO: Now receive data and send acknowledgements */
     //Data structure and constant initialization
-    map<int, string> receivedBufferedMap;    //c++??
-    unsigned long long int lastAckedNum = -1;
-    unsigned long long int orgPlanSeq = 0;
+    map<long long int, string> receivedBufferedMap;    //c++??
+    long long int lastAckedNum = -1;
+    long long int orgPlanSeq = 0;
 
     char buf[1600];
     memset(buf, 0, sizeof(buf));
     FILE* fp = fopen(destinationFile, "wb");
 
     struct sockaddr_in their_addr; //sender's address, get filled from recvfrom function(how does this work?)
-    int numbytes = 0;
+    long long int numbytes = 0;
     socklen_t their_addr_size = sizeof(their_addr);
     //ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,struct sockaddr *src_addr, socklen_t *addrlen);
 
@@ -110,7 +110,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
                 fwrite(receivedBufferedMap[nextPktIdx].c_str(), 1, receivedBufferedMap[nextPktIdx].length(), fp);
                 fflush(fp);
                 // write to file and deliver
-                map<int, string>::iterator it = receivedBufferedMap.find(nextPktIdx);
+                map<long long int, string>::iterator it = receivedBufferedMap.find(nextPktIdx);
                 receivedBufferedMap.erase(it);
                 nextPktIdx ++;
             }
