@@ -59,7 +59,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     FILE* fp = fopen(destinationFile, "wb");
 
     struct sockaddr_in their_addr; //sender's address, get filled from recvfrom function(how does this work?)
-    long long int numbytes = 0;
+    int numbytes = 0;
     socklen_t their_addr_size = sizeof(their_addr);
     //ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,struct sockaddr *src_addr, socklen_t *addrlen);
 
@@ -68,7 +68,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             diep("Finished: receive ends!");
         }
 
-        unsigned long long int currSeqNum;
+        long long int currSeqNum;
         char contentBuf[1600];
 	      memset(contentBuf, 0, sizeof(contentBuf));
 
@@ -88,7 +88,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 	        cout << "arrive early" << endl;
             receivedBufferedMap[currSeqNum] = contentStr;
             //under this condition: send back dup ack
-            int dupAckSeq = orgPlanSeq - 1;
+            long long int dupAckSeq = orgPlanSeq - 1;
             char ackChars[40];
             sprintf(ackChars, "%lld", dupAckSeq);
             string temp = ackChars;
