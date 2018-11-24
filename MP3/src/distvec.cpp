@@ -10,10 +10,11 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    FILE *fpOut;
-    fpOut = fopen("output.txt", "w");
-    fclose(fpOut);
+    // FILE *fpOut;
+    // fpOut = fopen("output.txt", "w");
+    //
+    //
+    // fclose(fpOut);
 
     return 0;
 }
-
