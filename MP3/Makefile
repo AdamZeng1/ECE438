@@ -1,7 +1,7 @@
 EXEC_LINK_STATE = linkstate
 EXEC_DISTANCE_VECTOR = distvec
 
-COMPILER = g++
+COMPILER = g++ -std=c++11
 
 all: linkstate distvec
 
