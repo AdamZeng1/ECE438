@@ -16,6 +16,7 @@
 
 using namespace std;
 
+#define DEFAULT_NEXTHOP_INPOSSIBLE_DEST 0;
 // here Node.neighbors represent the distance-vector map from source node to all the other nodes
 
 // use ofstream to write documents
@@ -37,7 +38,7 @@ void split(const string &s, vector<int> &sv, const char flag = ' ')
 // second params newly added
 void init(map<int, Node *> &nodes, string topoFileName)
 {
-    ifstream in(topoFileName); //be careful to the real file path
+    ifstream in("../" + topoFileName); //be careful to the real file path
 
     if (!in)
     {
@@ -95,7 +96,8 @@ void init(map<int, Node *> &nodes, string topoFileName)
                 if (!k_v.second->distance_vector[k_v1.second->label])
                 {
                     k_v.second->distance_vector[k_v1.second->label] = INT32_MAX;
-                    k_v.second->next_hop[k_v1.second->label] = -1;
+                    // default next-hop for impossible dest
+                    k_v.second->next_hop[k_v1.second->label] = DEFAULT_NEXTHOP_INPOSSIBLE_DEST;
                 }
             }
         }
@@ -269,7 +271,7 @@ void updateFowardingTables(map<int, Node *> &nodes, bool &converged)
 void sendAllMsg(string msgFileName, map<int, Node *> &nodes)
 {
     cout << "Entering sendAllMsg function" << endl;
-    ifstream in(msgFileName); //be careful to the real file path
+    ifstream in("../" + msgFileName); //be careful to the real file path
 
     if (!in)
     {
@@ -394,7 +396,7 @@ int main(int argc, char **argv)
     sendAllMsg(msgFileName, nodes);
 
     // 3.loop through the change file, change structure and send all messages again
-    ifstream in(changeFileName); //be careful to the real file path
+    ifstream in("../" + changeFileName); //be careful to the real file path
     if (!in)
     {
         cout << "Cannot open input file.\n";
@@ -417,23 +419,49 @@ int main(int argc, char **argv)
         int node2 = sv[1];
         int newCost = sv[2];
 
-        // cout << "node1 affected: " << node1 << " ,node2 affected: " << node2 << " ,newcost: " << newCost << endl;
-        // if (newCost == -999)
-        // {
-        //     if ((nodes[node1]->neighbors).find(node2) != (nodes[node1]->neighbors).end())
-        //     {
-        //         (nodes[node1]->neighbors).erase(node2);
-        //     }
-        //     if ((nodes[node2]->neighbors).find(node1) != (nodes[node2]->neighbors).end())
-        //     {
-        //         (nodes[node2]->neighbors).erase(node1);
-        //     }
-        // }
-        // else
-        // {
-        //     (nodes[node1]->neighbors)[node2] = newCost;
-        //     (nodes[node2]->neighbors)[node1] = newCost;
-        // }
+        cout << "node1 affected: " << node1 << " ,node2 affected: " << node2 << " ,newcost: " << newCost << endl;
+        int count_flag = 0;
+        for (auto it = nodes.begin(); it != nodes.end(); ++it)
+        {
+            if (it->first == node1 || it->first == node2)
+            {
+                count_flag++;
+            }
+        }
+        // validate
+        if (count_flag != 2)
+        {
+            continue;
+        }
+
+        if (newCost == -999)
+        {
+            (nodes[node1]->neighbors).erase(node2);
+            // if ((nodes[node2]->neighbors).find(node1) != (nodes[node2]->neighbors).end())
+            (nodes[node2]->neighbors).erase(node1);
+        }
+        else
+        {
+            (nodes[node1]->neighbors)[node2] = newCost;
+            (nodes[node2]->neighbors)[node1] = newCost;
+        }
+
+        // clear tables that potentially related to this
+        //TODO disttable, nexthop table
+        for (auto &node : nodes)
+        {
+            node.second->updated = true;
+            for (auto &k_v : node.second->distance_vector)
+            {
+                node.second->distance_vector[k_v.first] = INT32_MAX;
+                node.second->next_hop[k_v.first] = DEFAULT_NEXTHOP_INPOSSIBLE_DEST;
+            }
+            for (auto &neighbor : node.second->neighbors)
+            {
+                node.second->distance_vector[neighbor.first] = neighbor.second;
+                node.second->next_hop[neighbor.first] = neighbor.first;
+            }
+        }
 
         Converged = false;
         updateFowardingTables(nodes, Converged);
