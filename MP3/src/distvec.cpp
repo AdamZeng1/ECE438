@@ -38,7 +38,7 @@ void split(const string &s, vector<int> &sv, const char flag = ' ')
 // second params newly added
 void init(map<int, Node *> &nodes, string topoFileName)
 {
-    ifstream in("../" + topoFileName); //be careful to the real file path
+    ifstream in(topoFileName); //be careful to the real file path
 
     if (!in)
     {
@@ -163,7 +163,7 @@ bool updateNeighbors(Node *&src, Node *&curr, map<int, Node *> &nodes)
 
         if (current_distance > updated_distance)
         {
-            cout << "update triggered: " << curr->label << "'s neighbor node " << src->label << "  to reduce length from " << current_distance << " to " << updated_distance << endl;
+            cout << "update triggered: " << src->label << "'s neighbor node " << curr->label << "  to reduce length from " << current_distance << " to " << updated_distance << " by routing from the first node to node" << k_v.first << endl;
             curr->distance_vector[k_v.first] = updated_distance;
             curr->next_hop[k_v.first] = src->label;
             curr->updated = true;
@@ -271,7 +271,7 @@ void updateFowardingTables(map<int, Node *> &nodes, bool &converged)
 void sendAllMsg(string msgFileName, map<int, Node *> &nodes)
 {
     cout << "Entering sendAllMsg function" << endl;
-    ifstream in("../" + msgFileName); //be careful to the real file path
+    ifstream in(msgFileName); //be careful to the real file path
 
     if (!in)
     {
@@ -331,25 +331,32 @@ void sendAllMsg(string msgFileName, map<int, Node *> &nodes)
 
         //get path
         string path;
-        vector<string> pathVector;
-        Node *current_node = nodes[source];
-        while (current_node->label != nodes[dest]->label)
+        if (cost == "infinite")
         {
-            pathVector.push_back(to_string(current_node->next_hop[dest]));
-            current_node = nodes[current_node->next_hop[dest]];
+            path = "unreachable";
         }
-
-        bool firstTime = true;
-        for (auto &str : pathVector)
+        else
         {
-            if (firstTime)
+            vector<string> pathVector;
+            Node *current_node = nodes[source];
+            while (current_node->label != nodes[dest]->label)
             {
-                path += str;
-                firstTime = false;
+                pathVector.push_back(to_string(current_node->next_hop[dest]));
+                current_node = nodes[current_node->next_hop[dest]];
             }
-            else
+
+            bool firstTime = true;
+            for (auto &str : pathVector)
             {
-                path += ' ' + str;
+                if (firstTime)
+                {
+                    path += str;
+                    firstTime = false;
+                }
+                else
+                {
+                    path += ' ' + str;
+                }
             }
         }
 
@@ -396,7 +403,7 @@ int main(int argc, char **argv)
     sendAllMsg(msgFileName, nodes);
 
     // 3.loop through the change file, change structure and send all messages again
-    ifstream in("../" + changeFileName); //be careful to the real file path
+    ifstream in(changeFileName); //be careful to the real file path
     if (!in)
     {
         cout << "Cannot open input file.\n";
@@ -447,7 +454,7 @@ int main(int argc, char **argv)
         }
 
         // clear tables that potentially related to this
-        //TODO disttable, nexthop table
+        //TODO dist_vec table, next_hop table
         for (auto &node : nodes)
         {
             node.second->updated = true;
