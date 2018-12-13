@@ -13,7 +13,8 @@ public:
   int index;
   int backoff;
   int colisionNum;
-  Node(int index);
+  int maximalBackoff;
+  Node(int index, int maximalBackoff);
 };
 
 #endif

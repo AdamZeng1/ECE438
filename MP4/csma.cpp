@@ -14,7 +14,7 @@ using namespace std;
 // // use ofstream to write documents
 // ofstream outputFile("output.txt");
 
-bool operator<(Node const &a, Node const &b)
+bool compare(Node const &a, Node const &b)
 {
   return a.backoff < b.backoff;
 }
@@ -62,7 +62,7 @@ void readFile(int *paramSet, string inputFile)
   in.close();
 }
 
-void simulate(int *paramSet)
+void simulate(int *paramSet, int *resultSet)
 {
 
   const int N = paramSet[0];
@@ -80,20 +80,25 @@ void simulate(int *paramSet)
 
   //==TODO==
   // comparator on backoff, descending order
-  Node *nodes[N] = {};
-  for (int i = 0; i < sizeof(nodes); i++)
+
+  vector<Node *> nodes;
+
+  for (int i = 0; i < N; i++)
   {
-    nodes[i] = new Node(i);
+    nodes.push_back(new Node(i, R));
+    nodes[i]->setRandom();
   }
 
   while (clocktick > 0)
   {
-    cout << "iteration" << (T - clocktick) << endl;
+    cout << "iteration: " << (T - clocktick) << endl;
 
-    sort(nodes, nodes + N);
+    sort(nodes.begin(), nodes.end(), compare);
     int endIndexOfSameBackoff = 0;
     int minBackOff = nodes[0]->backoff;
-    for (int i = 1; i < sizeof(nodes); i++)
+
+    // find the collision nodes
+    for (int i = 1; i < nodes.size(); i++)
     {
       if (nodes[i]->backoff != minBackOff)
       {
@@ -103,21 +108,49 @@ void simulate(int *paramSet)
     }
 
     // all cut backoff by minBackoff
-    for (int i = 1; i < sizeof(nodes); i++)
+    for (int i = 0; i < nodes.size(); i++)
     {
       nodes[i]->backoff = nodes[i]->backoff - minBackOff;
     }
 
-    // check for collision
-    for (int i = 0; i < endIndexOfSameBackoff; i++)
+    // if collision
+    if (endIndexOfSameBackoff > 0)
     {
-      checkForCollision(nodes[i]);
+      // collision number ++
+      for (int i = 0; i < endIndexOfSameBackoff; i++)
+      {
+        nodes[i]->colisionNum++;
+        if (nodes[i]->colisionNum >= M)
+        {
+          nodes[i]->maximalBackoff = R;
+          nodes[i]->colisionNum = 0;
+          nodes[i]->setRandom();
+        }
+        else
+        {
+          nodes[i]->maximalBackoff *= 2;
+          nodes[i]->setRandom();
+        }
+      }
+      //TODO:
+      totalColisionNumber += (endIndexOfSameBackoff + 1);
+    }
+    else
+    {
+      // non collide
+      nodes[0]->setRandom();
+
+      // file transmission
+      utilizedTime += L;
+      clocktick -= L;
     }
 
     //
-
-    // clocktick--;
+    clocktick -= minBackOff;
   }
+
+  resultSet[0] = utilizedTime;
+  resultSet[1] = clocktick;
 }
 
 int main(int argc, char **argv)
@@ -130,10 +163,11 @@ int main(int argc, char **argv)
   // M 6
   // T 50000
   int paramSet[5];
+  int resultSet[2];
   readFile(paramSet, inputFileName);
 
   // simulate start
-  simulate(paramSet);
+  simulate(paramSet, resultSet);
 
   // output file
 
