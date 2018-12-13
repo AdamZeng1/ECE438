@@ -15,6 +15,7 @@ public:
   int colisionNum;
   int maximalBackoff;
   Node(int index, int maximalBackoff);
+  void setRandom(vector<int>& R);
 };
 
 #endif

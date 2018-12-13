@@ -11,29 +11,35 @@
 using namespace std;
 
 #include "node.h"
+
+ int N;
+ int L; // packet length
+ vector<int> R; // init timeslot
+ int M; // maximum collision
+ int T; // total time
+
 // // use ofstream to write documents
 // ofstream outputFile("output.txt");
 
-bool compare(Node const &a, Node const &b)
+bool myCompare(Node* a, Node* b)
 {
-  return a.backoff < b.backoff;
+  return a->backoff < b->backoff;
 }
 
-void split(const string &s, vector<int> &sv, const char flag = ' ')
+void split(const string &s, vector<string> &sv, const char flag = ' ')
 {
   sv.clear();
   istringstream iss(s);
   string temp;
-
   while (getline(iss, temp, flag))
   {
-    sv.push_back(stoi(temp));
+    sv.push_back(temp);
   }
   return;
 }
 
 // second params newly added
-void readFile(int *paramSet, string inputFile)
+void readFile(string inputFile)
 {
   ifstream in(inputFile); //be careful to the real file path
 
@@ -52,25 +58,42 @@ void readFile(int *paramSet, string inputFile)
       cout << str << endl;
 
     //split line
-    vector<int> sv; // node1, node2, distance
+    vector<string> sv; // node1, node2, distance
     split(str, sv, ' ');
     if (sv.size() == 0)
       continue;
-    paramSet[index] = sv[1];
+
+    string type = sv[0];
+    if (type == "N") {
+        N = stoi(sv[1]);
+    } else if (type == "L") {
+        L = stoi(sv[1]);
+    } else if (type == "R") {
+        sv.erase (sv.begin());
+        vector<int> r;
+        for (auto & str : sv) {
+            r.push_back(stoi(str));
+        }
+        R = r;
+    } else if (type == "M") {
+        M = stoi(sv[1]);
+    } else if (type == "T") {
+        T = stoi(sv[1]);
+    }
   }
 
   in.close();
 }
 
-void simulate(int *paramSet, int *resultSet)
+void simulate(int *resultSet)
 {
 
-  const int N = paramSet[0];
-  const int L = paramSet[1]; // packet length
-  const int R = paramSet[2]; // init timeslot
-  const int M = paramSet[3]; // maximum collision
-  const int T = paramSet[5]; // total time
-
+  // const int N = paramSet[0];
+  // const int L = paramSet[1]; // packet length
+  // const int R = paramSet[2]; // init timeslot
+  // const int M = paramSet[3]; // maximum collision
+  // const int T = paramSet[5]; // total time
+  cout << "N: " << N << "L: " << L << "M: " << M  << "T: " << T;
   int clocktick = T;
 
   // output data
@@ -85,15 +108,15 @@ void simulate(int *paramSet, int *resultSet)
 
   for (int i = 0; i < N; i++)
   {
-    nodes.push_back(new Node(i, R));
-    nodes[i]->setRandom();
+    nodes.push_back(new Node(i, R[0]));
+    nodes[i]->setRandom(R);
   }
 
   while (clocktick > 0)
   {
     cout << "iteration: " << (T - clocktick) << endl;
 
-    sort(nodes.begin(), nodes.end(), compare);
+    sort(nodes.begin(), nodes.end(), myCompare);
     int endIndexOfSameBackoff = 0;
     int minBackOff = nodes[0]->backoff;
 
@@ -117,20 +140,22 @@ void simulate(int *paramSet, int *resultSet)
     if (endIndexOfSameBackoff > 0)
     {
       // collision number ++
-      for (int i = 0; i < endIndexOfSameBackoff; i++)
+      for (int i = 0; i < endIndexOfSameBackoff + 1; i++)
       {
         nodes[i]->colisionNum++;
         if (nodes[i]->colisionNum >= M)
         {
-          nodes[i]->maximalBackoff = R;
+          nodes[i]->maximalBackoff = R[0];
           nodes[i]->colisionNum = 0;
-          nodes[i]->setRandom();
+          nodes[i]->setRandom(R);
         }
         else
         {
           nodes[i]->maximalBackoff *= 2;
-          nodes[i]->setRandom();
+          nodes[i]->setRandom(R);
         }
+
+        cout << "node: " << i << "     node's colision num: " << nodes[i]->colisionNum << "     node's maximal Back off:  " << nodes[i]->maximalBackoff << "    node's current random backoff: " << nodes[i]->backoff << endl;
       }
       //TODO:
       totalColisionNumber += (endIndexOfSameBackoff + 1);
@@ -138,7 +163,7 @@ void simulate(int *paramSet, int *resultSet)
     else
     {
       // non collide
-      nodes[0]->setRandom();
+      nodes[0]->setRandom(R);
 
       // file transmission
       utilizedTime += L;
@@ -162,12 +187,11 @@ int main(int argc, char **argv)
   // R 8 16 32 64 128 256 512
   // M 6
   // T 50000
-  int paramSet[5];
   int resultSet[2];
-  readFile(paramSet, inputFileName);
+  readFile(inputFileName);
 
   // simulate start
-  simulate(paramSet, resultSet);
+  simulate(resultSet);
 
   // output file
 
