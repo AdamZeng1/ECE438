@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string>
+#include <vector>
 
 using namespace std;
 
@@ -14,8 +15,10 @@ public:
   int backoff;
   int colisionNum;
   int maximalBackoff;
+  int total_col;
+  int total_trans;
   Node(int index, int maximalBackoff);
-  void setRandom(vector<int>& R);
+  void setRandom(vector<int> &R);
 };
 
 #endif
