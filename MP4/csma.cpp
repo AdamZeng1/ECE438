@@ -95,12 +95,6 @@ void readFile(string inputFile)
 
 void simulate(int *resultSet)
 {
-
-  // const int N = paramSet[0];
-  // const int L = paramSet[1]; // packet length
-  // const int R = paramSet[2]; // init timeslot
-  // const int M = paramSet[3]; // maximum collision
-  // const int T = paramSet[5]; // total time
   cout << "N: " << N << "L: " << L << "M: " << M << "T: " << T;
   int clocktick = T;
 
@@ -108,9 +102,6 @@ void simulate(int *resultSet)
   // ratio of clock ticks that were used up for correct communication to the total number of clock ticks
   int utilizedTime = 0;
   int totalColisionNumber = 0;
-
-  //==TODO==
-  // comparator on backoff, descending order
 
   vector<Node *> nodes;
 
@@ -169,7 +160,6 @@ void simulate(int *resultSet)
 
 
         nodes[i]->total_col += 1;
-        // cout << "node: " << i << "     node's colision num: " << nodes[i]->colisionNum << "     node's maximal Back off:  " << nodes[i]->maximalBackoff << "    node's current random backoff: " << nodes[i]->backoff << endl;
       }
       //total col number ++
       totalColisionNumber += (endIndexOfSameBackoff + 1);
@@ -352,7 +342,7 @@ int main(int argc, char **argv)
   // simulate start
   simulate(resultSet);
 
-  // output file
+  // output data file for plotting
   //writeDataToFile3ABC();
   //writeDataToFile3D();
   //writeDataToFile3E();
