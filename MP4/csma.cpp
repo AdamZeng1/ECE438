@@ -12,16 +12,13 @@ using namespace std;
 
 #include "node.h"
 
- int N;
- int L; // packet length
- vector<int> R; // init timeslot
- int M; // maximum collision
- int T; // total time
+int N;
+int L;         // packet length
+vector<int> R; // init timeslot
+int M;         // maximum collision
+int T;         // total time
 
-// // use ofstream to write documents
-// ofstream outputFile("output.txt");
-
-bool myCompare(Node* a, Node* b)
+bool myCompare(Node *a, Node *b)
 {
   return a->backoff < b->backoff;
 }
@@ -64,21 +61,31 @@ void readFile(string inputFile)
       continue;
 
     string type = sv[0];
-    if (type == "N") {
-        N = stoi(sv[1]);
-    } else if (type == "L") {
-        L = stoi(sv[1]);
-    } else if (type == "R") {
-        sv.erase (sv.begin());
-        vector<int> r;
-        for (auto & str : sv) {
-            r.push_back(stoi(str));
-        }
-        R = r;
-    } else if (type == "M") {
-        M = stoi(sv[1]);
-    } else if (type == "T") {
-        T = stoi(sv[1]);
+    if (type == "N")
+    {
+      N = stoi(sv[1]);
+    }
+    else if (type == "L")
+    {
+      L = stoi(sv[1]);
+    }
+    else if (type == "R")
+    {
+      sv.erase(sv.begin());
+      vector<int> r;
+      for (auto &str : sv)
+      {
+        r.push_back(stoi(str));
+      }
+      R = r;
+    }
+    else if (type == "M")
+    {
+      M = stoi(sv[1]);
+    }
+    else if (type == "T")
+    {
+      T = stoi(sv[1]);
     }
   }
 
@@ -93,7 +100,7 @@ void simulate(int *resultSet)
   // const int R = paramSet[2]; // init timeslot
   // const int M = paramSet[3]; // maximum collision
   // const int T = paramSet[5]; // total time
-  cout << "N: " << N << "L: " << L << "M: " << M  << "T: " << T;
+  cout << "N: " << N << "L: " << L << "M: " << M << "T: " << T;
   int clocktick = T;
 
   // output data
@@ -136,6 +143,9 @@ void simulate(int *resultSet)
       nodes[i]->backoff = nodes[i]->backoff - minBackOff;
     }
 
+    // TODO
+    // conflict time included?  CSMA-CD will detect instantly.
+
     // if collision
     if (endIndexOfSameBackoff > 0)
     {
@@ -155,9 +165,10 @@ void simulate(int *resultSet)
           nodes[i]->setRandom(R);
         }
 
-        cout << "node: " << i << "     node's colision num: " << nodes[i]->colisionNum << "     node's maximal Back off:  " << nodes[i]->maximalBackoff << "    node's current random backoff: " << nodes[i]->backoff << endl;
+        nodes[i]->total_col += 1;
+        // cout << "node: " << i << "     node's colision num: " << nodes[i]->colisionNum << "     node's maximal Back off:  " << nodes[i]->maximalBackoff << "    node's current random backoff: " << nodes[i]->backoff << endl;
       }
-      //TODO:
+      //total col number ++
       totalColisionNumber += (endIndexOfSameBackoff + 1);
     }
     else
@@ -168,6 +179,7 @@ void simulate(int *resultSet)
       // file transmission
       utilizedTime += L;
       clocktick -= L;
+      nodes[0]->total_trans += L;
     }
 
     //
@@ -176,6 +188,54 @@ void simulate(int *resultSet)
 
   resultSet[0] = utilizedTime;
   resultSet[1] = clocktick;
+
+  double totalTime = T;
+  double rate = utilizedTime / totalTime;
+
+  double number_nodes = N;
+
+  double vairance_trans = 0;
+  double variance_col = 0;
+
+  double var_col_average = totalColisionNumber / number_nodes;
+  double var_trans_average = utilizedTime / number_nodes;
+
+  double var_trans = 0;
+  double var_col = 0;
+
+  cout << var_col_average << "===DEBUG===" << endl;
+  for (int i = 0; i < nodes.size(); i++)
+  {
+    var_col += (nodes[i]->total_col - var_col_average) * (nodes[i]->total_col - var_col_average);
+
+    var_trans += (nodes[i]->total_trans - var_trans_average) * (nodes[i]->total_trans - var_trans_average);
+    cout << "debug====" << endl;
+    cout << nodes[i]->total_col << endl;
+    cout << var_col << endl;
+  }
+  var_col /= number_nodes;
+  var_trans /= number_nodes;
+  variance_col = sqrt(var_col);
+  vairance_trans = sqrt(var_trans);
+
+  cout << "var_col " << endl;
+  cout << var_col << endl;
+
+  // // use ofstream to write documents
+  ofstream outputFile("output.txt");
+
+  // calculate the variance
+  if (outputFile.is_open())
+  {
+    outputFile << "Channel utilization (in percentage) " << rate * 100 << '%' << endl;
+    outputFile << "Channel idle fraction (in percentage) " << (1 - rate) * 100 << '%' << endl;
+    outputFile << "Total number of collisions " << totalColisionNumber << endl;
+    outputFile << "Variance in number of successful transmissions (across all nodes)" << vairance_trans << endl;
+    outputFile << "Variance in number of collisions (across all nodes)" << variance_col << endl;
+  };
+
+  //
+  outputFile.close();
 }
 
 int main(int argc, char **argv)
@@ -192,8 +252,6 @@ int main(int argc, char **argv)
 
   // simulate start
   simulate(resultSet);
-
-  // output file
 
   return 0;
 }
