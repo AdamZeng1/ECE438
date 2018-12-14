@@ -7,6 +7,7 @@
 #include <vector>
 #include <climits>
 #include <algorithm>
+#include <math.h>
 
 using namespace std;
 
@@ -114,7 +115,7 @@ void simulate(int *resultSet)
 
   while (clocktick > 0)
   {
-    cout << "iteration: " << (T - clocktick) << endl;
+    //cout << "iteration: " << (T - clocktick) << endl;
 
     sort(nodes.begin(), nodes.end(), myCompare);
     int endIndexOfSameBackoff = 0;
@@ -134,6 +135,7 @@ void simulate(int *resultSet)
     for (int i = 0; i < nodes.size(); i++)
     {
       nodes[i]->backoff = nodes[i]->backoff - minBackOff;
+    //   cout << "node: " << i << "     node's colision num: " << nodes[i]->colisionNum << "     node's maximal Back off:  " << nodes[i]->maximalBackoff << "    node's current random backoff: " << nodes[i]->backoff << endl;
     }
 
     // if collision
@@ -155,7 +157,7 @@ void simulate(int *resultSet)
           nodes[i]->setRandom(R);
         }
 
-        cout << "node: " << i << "     node's colision num: " << nodes[i]->colisionNum << "     node's maximal Back off:  " << nodes[i]->maximalBackoff << "    node's current random backoff: " << nodes[i]->backoff << endl;
+        // cout << "node: " << i << "     node's colision num: " << nodes[i]->colisionNum << "     node's maximal Back off:  " << nodes[i]->maximalBackoff << "    node's current random backoff: " << nodes[i]->backoff << endl;
       }
       //TODO:
       totalColisionNumber += (endIndexOfSameBackoff + 1);
@@ -176,6 +178,103 @@ void simulate(int *resultSet)
 
   resultSet[0] = utilizedTime;
   resultSet[1] = clocktick;
+  resultSet[2] = totalColisionNumber;
+}
+
+void writeDataToFile3ABC() {
+    ofstream outputFile3A("3_a.txt");
+    ofstream outputFile3B("3_b.txt");
+    ofstream outputFile3C("3_c.txt");
+
+    for (int i = 5; i <= 500; i++) {
+        int resultSet[3];
+        N = i;
+        simulate(resultSet);
+        cout << "nodes num: " << i << "utilization rate: " << 100 * resultSet[0] / T << "%" << endl;
+        if (outputFile3A.is_open())
+        {
+          outputFile3A << i << ' ' << 100 * resultSet[0] / T << endl;
+        }
+
+        if (outputFile3B.is_open())
+        {
+          outputFile3B << i << ' ' << 100 - 100 * resultSet[0] / T << endl;
+        }
+
+        if (outputFile3C.is_open())
+        {
+          outputFile3C << i << ' ' << resultSet[2] << endl;
+        }
+    }
+}
+
+void writeDataToFile3D() {
+    for (int i = 0; i < 5; i++) {
+        ofstream outputFile3D("3_d." + to_string(i) + ".txt");
+        R.clear();
+        int base = pow(2, i);
+        for (int k = 0; k < 6; k++) {
+            R.push_back(base);
+            base *= 2;
+        }
+
+        // for (auto & num: R) {
+        //     cout << num << " ";
+        // }
+        // cout << endl;
+        int countzero = 0;
+
+        for (int j = 5; j <= 500; j++) {
+            int resultSet[3];
+            N = j;
+            if (countzero > 20) {
+                cout << "nodes num: " << j << "utilization rate: " << 0 << "%" << endl;
+                if (outputFile3D.is_open()) {
+                    outputFile3D << j << ' ' << "0" << endl;
+                }
+                continue;
+            }
+            simulate(resultSet);
+            int percentage = 100 * resultSet[0] / T ;
+            if (percentage == 0) countzero ++;
+            cout << "nodes num: " << j << "utilization rate: " << percentage << "%" << endl;
+
+            if (outputFile3D.is_open())
+            {
+              outputFile3D << j << ' ' << 100 * resultSet[0] / T << endl;
+            }
+        }
+    }
+}
+
+void writeDataToFile3E() {
+    for (int i = 3; i < 5; i++) {
+        ofstream outputFile3E("3_e." + to_string(i) + ".txt");
+        L = 20 * (i + 1);
+        int countzero = 0;
+
+        for (int j = 5; j <= 500; j++) {
+            int resultSet[3];
+            N = j;
+            if (countzero > 15) {
+                cout << "nodes num: " << j << "utilization rate: " << 0 << "%" << endl;
+                if (outputFile3E.is_open()) {
+                    outputFile3E << j << ' ' << "0" << endl;
+                }
+                continue;
+            }
+
+            simulate(resultSet);
+            int percentage = 100 * resultSet[0] / T ;
+            if (percentage <= 1) countzero ++;
+            cout << "nodes num: " << j << "utilization rate: " << percentage << "%" << endl;
+
+            if (outputFile3E.is_open())
+            {
+              outputFile3E << j << ' ' << 100 * resultSet[0] / T << endl;
+            }
+        }
+    }
 }
 
 int main(int argc, char **argv)
@@ -187,13 +286,18 @@ int main(int argc, char **argv)
   // R 8 16 32 64 128 256 512
   // M 6
   // T 50000
-  int resultSet[2];
+  int resultSet[3];
   readFile(inputFileName);
 
   // simulate start
   simulate(resultSet);
 
   // output file
+  //writeDataToFile3ABC();
+  //writeDataToFile3D();
+  writeDataToFile3E();
+
+
 
   return 0;
 }
