@@ -16,5 +16,7 @@ Node::Node(int index, int maximalBackoff)
 
 void Node::setRandom(vector<int> &R)
 {
-  this->backoff = rand() % (R[this->colisionNum]) + 1;
+  // zeroable backoff
+  // this->backoff = rand() % (R[this->colisionNum]) + 1;
+  this->backoff = rand() % (R[this->colisionNum] + 1);
 }
