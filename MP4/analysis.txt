@@ -1,6 +1,0 @@
-
-Each time we increase the initial R doubly, the utilization of the channel for little amount of nodes will be lower, since the ratio of slot range to number of nodes is quite large so that there will be much time wasted when nodes keep counting down to reach the transmission point. As the node number increases, the utilization will increase a a bit for each situation. As for the changes for latter half of the curves, the curve with smaller initial R will have more extensive decay rate. It is obvious that when the minimum R is   smaller, nodes have to go through a longer process to leverage its R, which means more nodes will have to stuck at situation to choose random backoff from a smaller range. 
-
-
-
-As the number of nodes increases, the utilization of the channel rises then decay quickly due to the crowdness of the channel. And the utilizaiton increases as the packet length increases. This is mostly due to the increase of transmission duration. With the same level of node density in the network(probability of collision), the same average amout of time a node has to decrease and the same success times for success transmission, the increase of single transmission duration will increase the utilization of the channel. 
